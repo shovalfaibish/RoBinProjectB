@@ -102,8 +102,8 @@ def timer(func):
         elapsed_time = toc - tic
 
         msg = f"Elapsed time: {elapsed_time * 1000:.2f}ms"
-        # with open(os.path.join(Path.home(), "/RoBin_Files/Logs/Latest/Semseg_Logs.txt"), 'a') as f:
-        #     f.write(msg + '\n')
+        with open(os.path.join(Path.home(), "RoBin_Files/Logs/Latest/Semseg_Logs.txt"), 'a') as f:
+            f.write(msg + '\n')
         print(msg, flush=True)
 
         return value
