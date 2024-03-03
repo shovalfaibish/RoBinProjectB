@@ -18,7 +18,7 @@ from navigation_inner import Navigation
 ##############################
 
 
-logfile = os.path.join(Path.home(), "/RoBin_Files/Logs/Latest/Navigation_Logs.txt")
+logfile = os.path.join(Path.home(), "RoBin_Files/Logs/Latest/Navigation_Logs.txt")
 start_TaskID = ""
 nav = Navigation()
 
@@ -42,7 +42,7 @@ def look_for_tasks():
 
         while True:
             # ManagerStatus in ModuleJobs table notifies on new tasks
-            cursor_tasks.execute("SELECT ManagerStatus FROM ModuleJobs WHERE Module='Navigation'")
+            cursor_tasks.execute("SELECT ManagerStatus FROM modulejobs WHERE Module='Navigation'")
             result = cursor_tasks.fetchall()
 
             # Parse Navigation module line
@@ -52,40 +52,40 @@ def look_for_tasks():
                     if manager_status == 1:
                         # New tasks are in the NavigationTasks table
                         cursor_tasks.execute("SELECT TaskID, Command "
-                                             "FROM NavigationTasks "
+                                             "FROM navigationtasks "
                                              "WHERE Status='NEW'")
                         result = cursor_tasks.fetchall()
 
                         # Iterate new tasks
                         if len(result) > 0:
                             for (TaskID, Command) in result:
-                                if Command == "StartNavigation":
+                                if Command == "Start":
                                     # TODO: START CAMERA??
                                     nav.start()
 
                                     # Set StartNavigation task to RUNNING
                                     start_TaskID = TaskID
-                                    cursor_tasks.execute("UPDATE NavigationTasks "
+                                    cursor_tasks.execute("UPDATE navigationtasks "
                                                          "SET Status='RUNNING' "
                                                          f"WHERE TaskID='{TaskID}'")
 
-                                elif Command == "StopNavigation":
+                                elif Command == "Stop":
                                     # TODO: STOP CAMERA??
                                     nav.stop()
 
                                     # Set StartNavigation and StartNavigation tasks to DONE
-                                    cursor_tasks.execute("UPDATE NavigationTasks "
+                                    cursor_tasks.execute("UPDATE navigationtasks "
                                                          "SET Status='DONE' "
                                                          f"WHERE TaskID={TaskID} OR TaskID={start_TaskID}")
 
                                     # Update ModuleJobs on module stopped
-                                    cursor_tasks.execute("UPDATE ModuleJobs "
+                                    cursor_tasks.execute("UPDATE modulejobs "
                                                          "SET ManagerStatus=0, ModuleStatus=1 "
                                                          "WHERE Module='Navigation'")
                                     start_TaskID = ""
 
                             # Update ModuleJobs that all pending tasks have been executed
-                            cursor_tasks.execute("UPDATE ModuleJobs "
+                            cursor_tasks.execute("UPDATE modulejobs "
                                                  "SET ManagerStatus=0, ModuleStatus=1 "
                                                  "WHERE Module='Navigation'")
 
