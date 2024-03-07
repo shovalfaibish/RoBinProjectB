@@ -131,6 +131,7 @@ class SemSeg:
     def predict(self, img_fname) -> Tensor:
         if self.timestamp == -1:
             return
+
         # Resize and save image
         image = read_image(str(img_fname))
         image = T.Resize((int(image.shape[1] * 0.1), int(image.shape[2] * 0.1)))(image)
@@ -158,6 +159,7 @@ class SemSeg:
             if image_file is not None:
                 self.predict(image_file)
             time.sleep(2) # TODO: Change as needed
+        print("STOPSS")
 
     def get_seg_result(self):
         with self.result_lock:
@@ -167,7 +169,7 @@ class SemSeg:
         self._write_log("Started semantic segmentation process.")
         self.stop_thread = False
         self.timestamp = timestamp
-        threading.Thread(target=self._perform_semantic_segmentation).start()
+        threading.Thread(target=self._perform_semantic_segmentation, name="Semseg_th").start()
 
     def stop(self):
         self._write_log("Stopped semantic segmentation process.")
