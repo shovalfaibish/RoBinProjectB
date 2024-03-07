@@ -28,7 +28,7 @@ namespace ManagerGUI.Utility
         {
             List<string> lines = new List<string>();
             string selectNewCommunications = "SELECT * " +
-                                            $"FROM CommunicationIn " +
+                                            $"FROM communicationin " +
                                              "WHERE Status='NEW'";
 
             try
@@ -71,11 +71,59 @@ namespace ManagerGUI.Utility
             //return new ErrorValue<List<string>>(lines);
         }
 
+        public static List<string> GetModuleRequestsByStatus(string module, string status)
+        {
+            List<string> lines = new List<string>();
+            string selectNewRequests = "SELECT * " +
+                                      $"FROM {module}requests " +
+                                      $"WHERE Status='{status}'";
+
+            try
+            {
+                using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
+                {
+                    connection.Open();
+                    using (MySqlCommand command = new MySqlCommand(selectNewRequests, connection))
+                    {
+                        using (MySqlDataReader reader = (MySqlDataReader)command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                // FIX!!!!!!!!!!!!
+                                lines.Add($"{reader[0]}|{reader[1]}|{reader[2]}|{reader[3]}");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (SqlException sqlE)
+            {
+                Error("GetModuleNewRequests", "Encountered an issue with SQL", sqlE);
+                return null;
+                //return new ErrorValue<List<string>>(null, "Encountered an issue with SQL ", sqlE);
+            }
+            catch (MySqlException sqlE)
+            {
+                Error("GetModuleNewRequests", "Encountered an issue with SQL", sqlE);
+                return null;
+                //return new ErrorValue<List<string>>(null, "Encountered an issue with SQL ", sqlE);
+            }
+            catch (Exception e)
+            {
+                Error("GetModuleNewRequests", "Unknown issue", e);
+                return null;
+                //return new ErrorValue<List<string>>(null, "Unknown issue ", e);
+            }
+
+            return lines;
+            //return new ErrorValue<List<string>>(lines);
+        }
+
         public static string GetModuleTaskStatus(string module, string TaskID)
         {
             List<string> lines = new List<string>();
             string selectTaskChanges = "SELECT Status " +
-                                      $"FROM {module}Tasks " +
+                                      $"FROM {module}tasks " +
                                       $"WHERE TaskID='{TaskID}'";
 
             try
@@ -125,14 +173,14 @@ namespace ManagerGUI.Utility
         }
 
         /// <summary>
-        /// retrieves all ModuleJobs data, excluding 'Communication' - this is in a different (faster) thread
+        /// retrieves all modulejobs data, excluding 'Communication' - this is in a different (faster) thread
         /// </summary>
         /// <returns></returns>
         public static List<string> GetAllModuleData()
         {
             List<string> lines = new List<string>();
             string selectAllModuleStatus = "SELECT * " +
-                                          $"FROM ModuleJobs ";// +
+                                          $"FROM modulejobs ";// +
                                           //"WHERE Module != 'Communication'";
 
             try
@@ -180,7 +228,7 @@ namespace ManagerGUI.Utility
 
         /*
         /// <summary>
-        /// get the status of the communication module in the ModuleJobs table. 
+        /// get the status of the communication module in the modulejobs table. 
         /// its in a different query bc communication response needs to be MUCH quicker.
         /// </summary>
         /// <returns></returns>
@@ -189,7 +237,7 @@ namespace ManagerGUI.Utility
             bool IsWindowsOS = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
             List<string> lines = new List<string>();
             string selectAllModuleStatus = "SELECT * " +
-                                          $"FROM ModuleJobs " +
+                                          $"FROM modulejobs " +
                                           "WHERE Module='Communication'";
 
             try
@@ -252,7 +300,7 @@ namespace ManagerGUI.Utility
             }
             if (lines.Count != 1)
             {
-                string errorMsg = "GetCommunicationData: We didn't find exactly 1 line as expected. Please check the SQL table 'CommunicationIn'";
+                string errorMsg = "GetCommunicationData: We didn't find exactly 1 line as expected. Please check the SQL table 'communicationin'";
                 Console.WriteLine(errorMsg);
                 return null;
             }
@@ -263,8 +311,8 @@ namespace ManagerGUI.Utility
         public static bool UpdateModuleChecked(string name)
         {
             List<string> lines = new List<string>();
-            //update ModuleJobs column ModuleStatus to 0 bc we already checked all the changed tables
-            string updateModuleJobRow = "UPDATE ModuleJobs " +
+            //update modulejobs column ModuleStatus to 0 bc we already checked all the changed tables
+            string updateModuleJobRow = "UPDATE modulejobs " +
                                           $"SET ModuleStatus=0 " +
                                           $"WHERE Module='{name}'";
             try
@@ -298,6 +346,43 @@ namespace ManagerGUI.Utility
             return true;
         }
 
+        public static bool UpdateRequestStatus(string module, string TaskID, string status)
+        {
+            List<string> lines = new List<string>();
+            string updateRequestRow = $"UPDATE {module}requests " +
+                                      $"SET Status='{status}' " +
+                                      $"WHERE TaskID='{TaskID}'";
+            try
+            {
+                using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
+                {
+                    connection.Open();
+                    using (MySqlCommand command = new MySqlCommand(updateRequestRow, connection))
+                    {
+                        command.ExecuteNonQuery();
+                    }
+                }
+            }
+            catch (SqlException sqlE)
+            {
+                Error("UpdateRequestStatus", "Encountered an issue with SQL", sqlE);
+                return false;
+            }
+            catch (MySqlException sqlE)
+            {
+                Error("UpdateRequestStatus", "Encountered an issue with SQL", sqlE);
+                return false;
+            }
+            catch (Exception e)
+            {
+                Error("UpdateRequestStatus", "Unknown issue", e);
+                return false;
+                //return new ErrorValue("Unknown issue", e);
+            }
+
+            return true;
+        }
+
         /// <summary>
         /// cancel the module's new or running tasks
         /// </summary>
@@ -305,7 +390,7 @@ namespace ManagerGUI.Utility
         public static bool CancelModuleTasks(MissionTaskModule module)
         {
             List<string> lines = new List<string>();
-            //update ModuleJobs column ModuleStatus to 0 bc we already checked all the changed tables
+            //update modulejobs column ModuleStatus to 0 bc we already checked all the changed tables
 
             string ModuleName = string.Empty;
             switch (module)
@@ -321,7 +406,7 @@ namespace ManagerGUI.Utility
             }
             string TasksTable = ModuleName + "Tasks";
 
-            string updateModuleJobRow = "UPDATE ModuleJobs " +
+            string updateModuleJobRow = "UPDATE modulejobs " +
                                        $"SET ManagerStatus=1 " +
                                        $"WHERE Module='{ModuleName}'";
             string updateTasksRows =  $"UPDATE {TasksTable} " +
@@ -377,7 +462,7 @@ namespace ManagerGUI.Utility
             string addDriverTask = "INSERT INTO DriverTasks (TaskID, Command, Value, Speed, Time, Quadrant, Radius, Status) " +
                 $"Values ('{TaskID}', '{type}', '{dist}', '{speed}', '{time}', '{quadrant}', '{radius}', 'NEW')";
 
-            string updateModuleJobRow = "UPDATE ModuleJobs " +
+            string updateModuleJobRow = "UPDATE modulejobs " +
                                           $"SET ManagerStatus=1 " +
                                           $"WHERE Module='Driver'";
             try
@@ -431,7 +516,7 @@ namespace ManagerGUI.Utility
             string addDriverTask = "INSERT INTO CraneTasks (TaskID, Command, Value, Speed, Time, Data, Status) " +
                 $"VALUES ('{TaskID}', '{type}', '{value}', '{speed}', '{time}', '{data}', 'NEW')";
 
-            string updateModuleJobRow = "UPDATE ModuleJobs " +
+            string updateModuleJobRow = "UPDATE modulejobs " +
                                           $"SET ManagerStatus=1 " +
                                           $"WHERE Module='Crane'";
             try
@@ -475,10 +560,10 @@ namespace ManagerGUI.Utility
             // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
             string addDriverTask = "INSERT INTO CameraTasks (TaskID, Command, Value, Resolution, Status) " +
                                   $"VALUES ('{TaskID}', '{type}', '{value}', '{resolution}', 'NEW')";
-            string addCommunicationTask = "INSERT INTO CommunicationOut (TimeStamp, Type, FilePath, Data, Status) " +
+            string addCommunicationTask = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                      $"VALUES ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'SEND_IMG', '', '{type},{saveLocally},{resolution}', 'NEW')";
 
-            string updateModuleJobRow = "UPDATE ModuleJobs " +
+            string updateModuleJobRow = "UPDATE modulejobs " +
                                           $"SET ManagerStatus=1 " +
                                           $"WHERE Module='Camera' OR Module='Communication'";
             try
@@ -526,10 +611,10 @@ namespace ManagerGUI.Utility
         {
             List<string> lines = new List<string>();
             // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
-            string addCommunicationTask = "INSERT INTO CommunicationOut (TimeStamp, Type, FilePath, Data, Status) " +
+            string addCommunicationTask = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                       $"VALUES ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'SEND_IMG', '', 'Stop,False,False', 'NEW')";
 
-            string updateModuleJobRow = "UPDATE ModuleJobs " +
+            string updateModuleJobRow = "UPDATE modulejobs " +
                                           $"SET ManagerStatus=1 " +
                                           $"WHERE Module='Communication'";
             try
@@ -565,25 +650,19 @@ namespace ManagerGUI.Utility
         public static bool AddNavigationTask(string TaskID, string type)
         {
             List<string> lines = new List<string>();
-            // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
-            string addDriverTask = "INSERT INTO NavigationTasks (TaskID, Command, Status) " +
-                                  $"VALUES ('{TaskID}', '{type}', 'NEW')";
-            string addCommunicationTask = "INSERT INTO CommunicationOut (TimeStamp, Type, FilePath, Data, Status) " +
-                     $"VALUES ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'NAV', '', '{type}', 'NEW')";
+            // Add task to navigation and THEN update moduleJobs (to avoid navigation not finding the task)
+            string addNavigationTask = "INSERT INTO navigationtasks (TaskID, Command, Status) " +
+                                       $"VALUES ('{TaskID}', '{type}', 'NEW')";
 
-            string updateModuleJobRow = "UPDATE ModuleJobs " +
-                                          $"SET ManagerStatus=1 " +
-                                          $"WHERE Module='Navigation' OR Module='Communication'";
+            string updateModuleJobRow = "UPDATE modulejobs " +
+                                        $"SET ManagerStatus=1 " +
+                                        $"WHERE Module='Navigation'";
             try
             {
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand command = new MySqlCommand(addDriverTask, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                    using (MySqlCommand command = new MySqlCommand(addCommunicationTask, connection))
+                    using (MySqlCommand command = new MySqlCommand(addNavigationTask, connection))
                     {
                         command.ExecuteNonQuery();
                     }
@@ -613,48 +692,6 @@ namespace ManagerGUI.Utility
             return true;
         }
 
-        // used after the navigation module tells manager it finished its navigation task, this tells communication
-        // that navigation stopped
-        public static bool AddNavigationTaskDone()
-        {
-            List<string> lines = new List<string>();
-            // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
-            string addCommunicationTask = "INSERT INTO CommunicationOut (TimeStamp, Type, FilePath, Data, Status) " +
-                      $"VALUES ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'NAV', '', 'Stop', 'NEW')";
-
-            string updateModuleJobRow = "UPDATE ModuleJobs " +
-                                          $"SET ManagerStatus=1 " +
-                                          $"WHERE Module='Communication'";
-            try
-            {
-                using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
-                {
-                    connection.Open();
-                    using (MySqlCommand command = new MySqlCommand(addCommunicationTask, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                    using (MySqlCommand command = new MySqlCommand(updateModuleJobRow, connection))
-                    {
-                        command.ExecuteNonQuery();
-                    }
-                }
-            }
-            catch (MySqlException sqlE)
-            {
-                Error("AddNavigationTaskDone", "Encountered an issue with SQL", sqlE);
-                return false;
-            }
-            catch (Exception e)
-            {
-                Error("AddNavigationTaskDone", "Unknown issue", e);
-                return false;
-                //return new ErrorValue("Unknown issue", e);
-            }
-
-            return true;
-        }
-
         /// <summary>
         /// Add a db clean task for Maintenace
         /// </summary>
@@ -666,7 +703,7 @@ namespace ManagerGUI.Utility
             string addDriverTask = "INSERT INTO MaintenanceTasks (TimeStamp, Command, Status) " +
                 $"Values ('{DateTimeOffset.Now.ToUnixTimeMilliseconds()}', 'CLEAN_DB', 'NEW')";
 
-            string updateModuleJobRow = "UPDATE ModuleJobs " +
+            string updateModuleJobRow = "UPDATE modulejobs " +
                                           $"SET ManagerStatus=1 " +
                                           $"WHERE Module='Maintenance'";
             try
@@ -716,7 +753,7 @@ namespace ManagerGUI.Utility
             string addSensorsTask = "INSERT INTO SensorsTasks (TaskID, Command, Value, Status) " +
                 $"Values ('{RequestID}', '{type}', '{sensorsDataRate}', 'NEW')";
 
-            string updateModuleJobRow = "UPDATE ModuleJobs " +
+            string updateModuleJobRow = "UPDATE modulejobs " +
                                           $"SET ManagerStatus=1 " +
                                           $"WHERE Module='Sensors'";
             try
@@ -754,7 +791,7 @@ namespace ManagerGUI.Utility
         }
 
         /// <summary>
-        /// updates the the CommunicationIn table rows as checked
+        /// updates the the communicationin table rows as checked
         /// </summary>
         /// <param name="IDs"></param>
         /// <returns></returns>
@@ -762,8 +799,8 @@ namespace ManagerGUI.Utility
         {
             List<string> lines = new List<string>();
             string IDList = string.Join(", ", IDs);
-            // update all checked rows in the CommunicationIn to have a 'status=done' state
-            string updateAllProcessedIDs = "UPDATE CommunicationIn " +
+            // update all checked rows in the communicationin to have a 'status=done' state
+            string updateAllProcessedIDs = "UPDATE communicationin " +
                                           $"SET Status='DONE' " +
                                           $"WHERE ID in ({IDList})";
 
@@ -800,10 +837,10 @@ namespace ManagerGUI.Utility
 
         public static bool AddRequestDbDone(int statusNumber, string dbPath)
         {
-            string UpdateModuleJobs = "UPDATE ModuleJobs " +
+            string Updatemodulejobs = "UPDATE modulejobs " +
                           $"SET ManagerStatus={statusNumber} " +
                           "Where Module='Communication'";
-            string InsertCommunicationIn = "INSERT INTO CommunicationOut (TimeStamp, Type, FilePath, Data, Status) " +
+            string Insertcommunicationin = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                 $"Values ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'REQUEST_DB', '{dbPath}', '', 'NEW')";
 
             try
@@ -811,11 +848,11 @@ namespace ManagerGUI.Utility
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand command = new MySqlCommand(InsertCommunicationIn, connection))
+                    using (MySqlCommand command = new MySqlCommand(Insertcommunicationin, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    using (MySqlCommand command = new MySqlCommand(UpdateModuleJobs, connection))
+                    using (MySqlCommand command = new MySqlCommand(Updatemodulejobs, connection))
                     {
                         command.ExecuteNonQuery();
                     }
@@ -842,10 +879,10 @@ namespace ManagerGUI.Utility
 
         public static bool AddSettingsChanged(int statusNumber, string module)
         {
-            string UpdateModuleJobs = "UPDATE ModuleJobs " +
+            string Updatemodulejobs = "UPDATE modulejobs " +
                           $"SET ManagerStatus={statusNumber} " +
                           "Where Module='Communication'";
-            string InsertCommunicationIn = "INSERT INTO CommunicationOut (TimeStamp, Type, FilePath, Data, Status) " +
+            string Insertcommunicationin = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                 $"Values ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'SETTINGS', '', '{module}', 'NEW')";
 
             try
@@ -854,11 +891,11 @@ namespace ManagerGUI.Utility
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand command = new MySqlCommand(InsertCommunicationIn, connection))
+                    using (MySqlCommand command = new MySqlCommand(Insertcommunicationin, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    using (MySqlCommand command = new MySqlCommand(UpdateModuleJobs, connection))
+                    using (MySqlCommand command = new MySqlCommand(Updatemodulejobs, connection))
                     {
                         command.ExecuteNonQuery();
                     }
@@ -885,10 +922,10 @@ namespace ManagerGUI.Utility
 
         public static bool AddExternalPacketDone(int statusNumber)
         {
-            string UpdateModuleJobs = "UPDATE ModuleJobs " +
+            string Updatemodulejobs = "UPDATE modulejobs " +
                           $"SET ManagerStatus={statusNumber} " +
                           "Where Module='Communication'";
-            string InsertCommunicationIn = "INSERT INTO CommunicationOut (TimeStamp, Type, FilePath, Data, Status) " +
+            string Insertcommunicationin = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                 $"Values ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'EXTERNAL_PACKET', '', '', 'NEW')";
 
             try
@@ -896,11 +933,11 @@ namespace ManagerGUI.Utility
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand command = new MySqlCommand(InsertCommunicationIn, connection))
+                    using (MySqlCommand command = new MySqlCommand(Insertcommunicationin, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    using (MySqlCommand command = new MySqlCommand(UpdateModuleJobs, connection))
+                    using (MySqlCommand command = new MySqlCommand(Updatemodulejobs, connection))
                     {
                         command.ExecuteNonQuery();
                     }
@@ -927,10 +964,10 @@ namespace ManagerGUI.Utility
 
         public static bool AddSoftResetDone(int statusNumber)
         {
-            string UpdateModuleJobs = "UPDATE ModuleJobs " +
+            string Updatemodulejobs = "UPDATE modulejobs " +
                           $"SET ManagerStatus={statusNumber} " +
                           "Where Module='Communication'";
-            string InsertCommunicationIn = "INSERT INTO CommunicationOut (TimeStamp, Type, FilePath, Data, Status) " +
+            string Insertcommunicationin = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                 $"Values ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'SOFT_RESET', '', '', 'NEW')";
 
             try
@@ -938,11 +975,11 @@ namespace ManagerGUI.Utility
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand command = new MySqlCommand(InsertCommunicationIn, connection))
+                    using (MySqlCommand command = new MySqlCommand(Insertcommunicationin, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    using (MySqlCommand command = new MySqlCommand(UpdateModuleJobs, connection))
+                    using (MySqlCommand command = new MySqlCommand(Updatemodulejobs, connection))
                     {
                         command.ExecuteNonQuery();
                     }
