@@ -75,6 +75,7 @@ namespace ManagerGUI
         string GroundSettingsTaskID;
         string CurrentCameraTaskID;
         string CurrentNavigationTaskID;
+        string CurrentNavigationRequestTaskID;
         double cameraCaptureSensorsSampleRate;
         double regularSensorsSampleRate;
 
@@ -135,10 +136,10 @@ namespace ManagerGUI
             {
                 // the log folder was created, create the comm log 
                 LogFilePath = latestLogDir + "/Manager_Logs.txt";
-                logger.SetLogFilePath(LogFilePath);
+                //logger.SetLogFilePath(LogFilePath);
             }
-            logger.StartSetup(simulation);
-            logger.ReportLogPath();
+            //logger.StartSetup(simulation);
+            //logger.ReportLogPath();
         }
 
         /// <summary>
@@ -180,6 +181,7 @@ namespace ManagerGUI
             GroundSettingsTaskID = null; // TODO perhaps turn this into a "Task" structure
             CurrentCameraTaskID = null;
             CurrentNavigationTaskID = null;
+            CurrentNavigationRequestTaskID = null;
 
             usedTaskIDs = new HashSet<string>();
             // logging
@@ -244,7 +246,8 @@ namespace ManagerGUI
                     try
                     {
                         ProjectHandler();
-                    } catch ( Exception e)
+                    }
+                    catch (Exception e)
                     {
                         Error("ProjectHandler", "ProjectHandler crash", e);
                     }
@@ -262,7 +265,7 @@ namespace ManagerGUI
             Project startup = new Project(GetID(), ProjectType.ROBIN_STARTUP, 0, RobinID, RobinID, new List<Mission>());
 
             /* Mission #1: Move crane arm to HOME position: */
-            Mission mission1 = new Mission(1,"Crane_To_HOME", new List<MissionTask>());
+            Mission mission1 = new Mission(1, "Crane_To_HOME", new List<MissionTask>());
             startup.AddMission(mission1);
 
             // Task #1: wrist to (15)
@@ -326,8 +329,7 @@ namespace ManagerGUI
                     string ModuleName = elem[0];
                     //int ManagerStatus = Convert.ToInt32(elem[1]);
                     int ModuleStatus = Convert.ToInt32(elem[2]);
-
-                    string BinaryModuleStatus = GetStatus(ModuleStatus, 1);
+                    string BinaryModuleStatus = GetStatus(ModuleStatus, 2);
                     bool res;
 
                     // find out which module we are on
@@ -378,7 +380,9 @@ namespace ManagerGUI
             string GetStatus(int statusNumber, int tableCount)
             {
                 int statusNumberConverted = Convert.ToInt32(statusNumber);
-                return Convert.ToInt32(Convert.ToString(statusNumberConverted, 2)).ToString($"D{tableCount}");
+                string binaryNum = Convert.ToInt32(Convert.ToString(statusNumberConverted, 2)).ToString($"D{tableCount}");
+                // reverse to access bits from right to left
+                return new string(binaryNum.Reverse().ToArray());
             }
         }
 
@@ -501,7 +505,7 @@ namespace ManagerGUI
                             {
                                 // TODO change taskID to something meaningful
                                 bool sqlRes = SqlHelper.AddNavigationTask("1", cmd);
-                                
+
                                 // TODO special Logger functions for commands, projects, etc?
                                 ManagerAction("1", "Navigation", "Internal", cmd, "NEW", $"Self-initiated navigation stop");
 
@@ -530,12 +534,13 @@ namespace ManagerGUI
                             int cmdRadius = Convert.ToInt32(dataElems[7]);
 
                             // calibrate the Driver
-                            bool sqlRes = SqlHelper.AddDriverTask("1", cmd, cmdVal, cmdSpeed, 
+                            bool sqlRes = SqlHelper.AddDriverTask("1", cmd, cmdVal, cmdSpeed,
                                                                   cmdTime, cmdQuadrant, cmdRadius);
 
                             // log action
                             ManagerAction("NA", "Driver", "Calibrate", cmd, "NEW", "");
-                        } else if (type == "Crane")
+                        }
+                        else if (type == "Crane")
                         {
                             string relevantData = string.Join(",", dataElems.Skip(3));
 
@@ -682,7 +687,7 @@ namespace ManagerGUI
                 if (currentProject != null && currentMission != null && currentTask != null)
                 {
                     string TaskID = GetTaskID(currentProject.ProjectID, currentMission.MissionStep, currentTask.TaskStep);
-                    string TaskStatus = SqlHelper.GetModuleTaskStatus("Driver", TaskID);
+                    string TaskStatus = SqlHelper.GetModuleTaskStatus("driver", TaskID);
                     if (TaskStatus == null) return false; //TODO continue or break? debate this later.
 
                     if (!Enum.TryParse(TaskStatus, out ProjectStatus status)) return false;
@@ -719,6 +724,14 @@ namespace ManagerGUI
                                 Tracking("CheckAllModules", $"Task #{currentTask.TaskStep} DONE.");
                                 currentTask.Status = ProjectStatus.DONE;
                                 currentTask = null;
+
+                                // Update request of NavigationRequests to DONE
+                                if (TaskID == CurrentNavigationRequestTaskID)
+                                {
+                                    string parentTaskID = GetParentTaskID(TaskID);
+                                    SqlHelper.UpdateRequestStatus("navigation", parentTaskID, "DONE");
+                                    CurrentNavigationRequestTaskID = null;
+                                }
                             }
                             break;
                         default:
@@ -775,7 +788,7 @@ namespace ManagerGUI
                         case ProjectStatus.ERROR_CRANE_0:
                         case ProjectStatus.ERROR_CRANE_1:
                             // TODO handle the error somehow (repeat the task? something else?)
-                            ManagerAction(TaskID, "Crane", ActionType, cTask.craneType.ToString(), 
+                            ManagerAction(TaskID, "Crane", ActionType, cTask.craneType.ToString(),
                                           status.ToString(), GetProjectStatusDetails(status));
 
                             Tracking("CheckAllModules", $"Task #{currentTask.TaskStep} DONE with status={status}.");
@@ -877,18 +890,75 @@ namespace ManagerGUI
         /// <returns></returns>
         private bool CheckNavigation(string BinaryModuleStatus)
         {
-            if (BinaryModuleStatus[0] == '1')
+            // Navigation is currently running
+            if (CurrentNavigationTaskID != null)
             {
-                if (CurrentNavigationTaskID != null)
+                // Update in NavigationTasks table
+                if (BinaryModuleStatus[0] == '1')
                 {
-                    string status = SqlHelper.GetModuleTaskStatus("Navigation", CurrentNavigationTaskID);
+                    string status = SqlHelper.GetModuleTaskStatus("navigation", CurrentNavigationTaskID);
                     if (status != null && status == "DONE")
                     {
-                        // tell communication that navigation stopped
-                        SqlHelper.AddNavigationTaskDone();
                         CurrentNavigationTaskID = null;
                         // log action
                         ManagerAction("NA", "Navigation", "Manual", "Navigate", "DONE", "");
+
+                        return true;
+                    }
+                }
+
+                // Update in NavigationRequests table
+                if (BinaryModuleStatus[1] == '1')
+                {
+                    // Get all new msgs from NavigationRequests table
+                    List<string> msgData = SqlHelper.GetModuleRequestsByStatus("navigation", "NEW");
+                    if (msgData == null) return false; //TODO continue or break? decide.
+
+                    // Iterate new msgs and perform actions
+                    foreach (string msgLine in msgData)
+                    {
+                        string[] msgElem = msgLine.Split('|');
+                        int ID = Convert.ToInt32(msgElem[0]);
+                        string module = msgElem[2];
+                        string data = msgElem[3];
+
+                        // Commands are always a single-mission/single-task thing                
+                        string TaskID = GetTaskID(msgElem[1], 1, 1); // IS THIS CORRECT???
+                        CurrentNavigationRequestTaskID = TaskID;
+
+                        // Parse command
+                        string[] dataElem = data.Split(',');
+                        string cmd = dataElem[0];
+
+                        if (module == "Driver")
+                        {
+                            // TODO Add stop command to Driver and update ModuleJobs
+
+                            int cmdValue = Convert.ToInt32(dataElem[1]);
+                            int cmdSpeed = Convert.ToInt32(dataElem[2]);
+                            int cmdTime = Convert.ToInt32(dataElem[3]);
+                            int cmdQuadrant = Convert.ToInt32(dataElem[4]);
+                            int cmdRadius = Convert.ToInt32(dataElem[5]);
+
+                            // Add driver task based on the command
+                            bool sqlRes = SqlHelper.AddDriverTask(TaskID, cmd, cmdValue, cmdSpeed, cmdTime, cmdQuadrant, cmdRadius);
+                            if (sqlRes == false) return false; //TODO return or retry? debate this later.
+
+                            // TODO special Logger functions for commands, projects, etc?
+                            ManagerAction(TaskID, "Driver", "Internal", cmd, "NEW", $"(S:{cmdValue}, V:{cmdSpeed}, T:{cmdTime}");
+                            Tracking("CheckNavigation", $"Started Internal Command from Navigation: Module: Driver, Cmd: {cmd}, Val: {cmdValue}, Speed: {cmdSpeed}");
+
+                            // Add infinity forward drive task for continuous traversal
+                            TaskID = GetTaskID(msgElem[1], 1, 2); // IS THIS CORRECT???
+                            sqlRes = SqlHelper.AddDriverTask(TaskID, "Forward", -1, 40, -1, 1, -1);
+                            if (sqlRes == false) return false; //TODO return or retry? debate this later.
+
+                            ManagerAction(TaskID, "Driver", "Internal", "Forward", "NEW", $"(S:-1, V:40, T:-1");
+                            Tracking("CheckNavigation", $"Started Internal Command from Navigation: Module: Driver, Cmd: Forward, Val: -1, Speed: 40");
+                        }
+
+                        // Update request status to RUNNING // IS IT CORRECT HERE? REQUEST FINISHED BEFORE CHANGED TO RUNNING??
+                        SqlHelper.UpdateRequestStatus("navigation", msgElem[1], "RUNNING");
                     }
                 }
             }
@@ -957,7 +1027,8 @@ namespace ManagerGUI
                 {
                     extTask = new DriverTask(dType, value, -1, taskStep);
                 }
-            } else if (type == "Crane")
+            }
+            else if (type == "Crane")
             {
                 if (!Enum.TryParse(cmd, out CraneTypes cType))
                 {
@@ -972,7 +1043,7 @@ namespace ManagerGUI
                 Error("parseExternalCommand", $"Couldn't parse external data. check string: {data}");
                 return;
             }
-            
+
             //second, add the task to an existing or new external project
             if (currentProject != null && currentProject.ProjectID == ProjectID)
             {
@@ -996,7 +1067,7 @@ namespace ManagerGUI
                 // TODO robin name and ground name                
                 Mission extMission = new Mission(1, "External Mission", new List<MissionTask>());
                 extMission.AddTask(extTask);
-                currentProject = new Project(ProjectID, ProjectType.GROUNDSTATION_EXTERNAL, -1, 
+                currentProject = new Project(ProjectID, ProjectType.GROUNDSTATION_EXTERNAL, -1,
                     "", "", new List<Mission>() { extMission });
             }
             if (extTask.TaskStep == endStep)
@@ -1033,14 +1104,16 @@ namespace ManagerGUI
                         // no mission/task started. start one.
                         StartNextTask();
                     }
-                } else
+                }
+                else
                 {
                     if (currentTask == null)
                     {
                         // there is a project/mission, but no task.
                         // it probably ended, select a new one.
                         StartNextTask();
-                    } else
+                    }
+                    else
                     {
                         // special case. 
                         // (1) if we're running an undless external task, and 
@@ -1186,7 +1259,8 @@ namespace ManagerGUI
             {
                 // we still have tasks left in the mission
                 CurrentTaskInd++;
-            } else
+            }
+            else
             {
                 // no tasks left in the mission
                 if (currentProject.Type != ProjectType.GROUNDSTATION_EXTERNAL)
@@ -1198,7 +1272,7 @@ namespace ManagerGUI
                 }
                 else
                 {
-                    return; 
+                    return;
                     // ignore ongoing External projects. 
                     // they always have 1 mission with added tasks.
                 }
@@ -1264,7 +1338,7 @@ namespace ManagerGUI
                         // don't wait for Driver status update, it won't come.
                         currentTask = null;
                     }
-                    bool sqlRes = SqlHelper.AddDriverTask(TaskID, nextDriverTask.driverType.ToString(), 
+                    bool sqlRes = SqlHelper.AddDriverTask(TaskID, nextDriverTask.driverType.ToString(),
                         nextDriverTask.Dist, nextDriverTask.Speed, nextDriverTask.Time,
                         nextDriverTask.Quadrant, nextDriverTask.Radius);
                     if (sqlRes == false) return; //TODO return or retry? debate this later.
@@ -1291,7 +1365,7 @@ namespace ManagerGUI
                     break;
                 default:
                     break;
-            }            
+            }
         }
 
         /// <summary>
@@ -1307,7 +1381,7 @@ namespace ManagerGUI
             string cmd = dataElem[3];
 
             // commands are always a single-mission/single-task thing                
-            string TaskID = GetTaskID(dataElem[1], 1, 1); 
+            string TaskID = GetTaskID(dataElem[1], 1, 1);
 
             if (cmd == "Stop")
             {
@@ -1378,7 +1452,8 @@ namespace ManagerGUI
                     // to enable good sensors data for all camera frames.
                     // currently we keep it at 6 samples per second.
                     SqlHelper.AddSensorsTask(GetID(), "SETTINGS", cameraCaptureSensorsSampleRate);
-                } else if (cmd == "Stop")
+                }
+                else if (cmd == "Stop")
                 {
                     // change the sensors module sample rate to a lower value
                     // to a normal, low value (for the HBs).
@@ -1549,7 +1624,7 @@ namespace ManagerGUI
         /// <param name="Msg">the message</param>
         public void Tracking(string function, string Msg)
         {
-            logger.Tracking(function, Msg);
+            //logger.Tracking(function, Msg);
         }
 
         /// <summary>
@@ -1560,7 +1635,7 @@ namespace ManagerGUI
         /// <param name="e">an exception, if one happened</param>
         public void Error(string function, string msg, Exception e = null)
         {
-            logger.Error(function, msg, e);
+            //logger.Error(function, msg, e);
         }
 
         #endregion
@@ -1608,7 +1683,7 @@ namespace ManagerGUI
                 btnConnectLynx.Enabled = false;
             }
         }
-            
+
         // is this still relevant??
         private void btnForward_Click(object sender, EventArgs e)
         {
@@ -1698,6 +1773,19 @@ namespace ManagerGUI
         {
             //CraneCommandSqlActions("CageClose", numCage.Value, numCage.Value);
             // TODO return the manual commands from manager
+        }
+
+        static string GetParentTaskID(string TaskID)
+        {
+            // Split the string based on dots
+            string[] splitParts = TaskID.Split('.');
+
+            // Remove the last two elements
+            string[] modifiedParts = new string[splitParts.Length - 2];
+            Array.Copy(splitParts, modifiedParts, modifiedParts.Length);
+
+            // Join the modified parts back together with dots
+            return string.Join(".", modifiedParts);
         }
 
         #endregion
