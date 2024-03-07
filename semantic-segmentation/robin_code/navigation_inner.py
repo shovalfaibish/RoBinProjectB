@@ -4,6 +4,7 @@ import constants as const
 import math
 import os
 import threading
+import mysql.connector
 from datetime import datetime
 from pathlib import Path
 from tools.infer import SemSeg
@@ -17,31 +18,93 @@ class Navigation:
 
     def __init__(self, lab_exp=False):
         self.__stop_thread = False
-        self.__logfile = os.path.join(Path.home(), "RoBin_Files/Logs/Latest/Navigation_Logs.txt")
         self.__lab_exp = lab_exp
         self.__semseg = SemSeg(const.CFG_FILE_PATH, self.__lab_exp)
+        self.logfile = os.path.join(Path.home(), "RoBin_Files/Logs/Latest/Navigation_Logs.txt")
 
-    def _write_log(self, msg):
+        self.database = None
+        self.tasks_cursor = None
+        self.requests_cursor = None
+
+        self.start_task_id = ""
+        self.request_i = 1
+        self.request_task_id = ""
+
+    def connect_to_db(self):
+        try:
+            self.database = mysql.connector.connect(user='robin', password='robin',
+                                                    host='127.0.0.1',
+                                                    database='RobinDB')
+            self.tasks_cursor = self.database.cursor()
+            self.requests_cursor = self.database.cursor()
+
+        except mysql.connector.Error as err:
+            self.write_log(f"Something went wrong with MySQL: {err}")
+
+    def disconnect_from_db(self):
+        self.tasks_cursor.close()
+        self.requests_cursor.close()
+        self.database.close()
+
+    def write_log(self, msg):
         # Write to file and flush to stdout
-        with open(self.__logfile, 'a') as f:
+        with open(self.logfile, 'a') as f:
             f.write(msg + '\n')
         print(msg, flush=True)
 
-    @staticmethod
-    def _turn(degrees):
-        # TODO: Send command to driver through SQL
+    def _send_request_to_module(self, module, data):
+        self.request_task_id = self.start_task_id + f".1.{self.request_i}"
+
+        # Insert new request
+        self.requests_cursor.execute("INSERT INTO navigationrequests "
+                                     "(TaskID, Module, Data, Status) "
+                                     f"VALUES ('{self.request_task_id}', '{module}', '{data}', 'NEW')")
+
+        # Update ModuleJobs, and set 2nd bit of ModuleStatus to 1
+        self.requests_cursor.execute("UPDATE modulejobs "
+                                     "SET ManagerStatus=0, ModuleStatus = ModuleStatus | 2 "
+                                     "WHERE Module='Navigation'")
+        self.database.commit()
+
+        self.request_i += 1
+        self.write_log(f"Sent request '{self.request_task_id}' to: {module}, Values: {data}")
+
+    def _get_request_status(self):
+        if self.__stop_thread:
+            return None
+
+        self.requests_cursor.execute("SELECT Status "
+                                     "FROM navigationrequests "
+                                     f"WHERE TaskID='{self.request_task_id}'")
+        result = self.requests_cursor.fetchone()
+        return result[0] if result else None
+
+    def _wait_for_request_done(self):
+        while not self.__stop_thread:
+            status = self._get_request_status()
+            if status is None:  # Error
+                return
+            if status == "DONE":
+                self.write_log(f"Request {self.request_task_id} DONE.")
+                break
+            time.sleep(1)
+
+    def _terminate_all_requests(self):
+        self.requests_cursor.execute("UPDATE navigationrequests "
+                                     "SET Status='DONE' " 
+                                     "WHERE Status='NEW' OR Status='RUNNING'")
+        self.database.commit()
+
+    def _turn(self, degrees):
         degrees = int(degrees * const.DEGREES_FIX)
-        if abs(degrees) < const.DEGREES_THRESHOLD:
-            print(f"No adjustment: {abs(degrees)} degrees is below threshold")
-            return
+        # if abs(degrees) < const.DEGREES_THRESHOLD:
+        #     self.write_log(f"No adjustment: {abs(degrees)} degrees is below threshold")
 
         if degrees > 0:
-            # gs.driver.right(degrees)
-            print(f"Adjustment: Driver, Right, {degrees} degrees")
+            self._send_request_to_module("Driver", f"Right,{degrees},40,-1,1,0")
 
         else:
-            # gs.driver.left(-degrees)
-            print(f"Adjustment: Driver, Left, {-degrees} degrees")
+            self._send_request_to_module("Driver", f"Left,{-degrees},40,-1,1,0")
 
     def _adjust_direction_by_centroid(self, centroid_x, centroid_y):
         # Calculate image center x value
@@ -54,13 +117,14 @@ class Navigation:
         self._turn(angle_degrees)
 
     def start(self):
-        self._write_log("Started navigation process.")
+        self.write_log("Started navigation process.")
         self.__stop_thread = False
         threading.Thread(target=self.navigate).start()
 
     def stop(self):
-        self._write_log("Stopped navigation process.")
+        self.write_log("Stopped navigation process.")
         self.__stop_thread = True
+        self._terminate_all_requests()
 
     def navigate(self):
         if self.__lab_exp:
@@ -72,24 +136,24 @@ class Navigation:
         h.setup_output_folders(timestamp)
         self.__semseg.start(timestamp)
 
-        # TODO: TIME SLEEP TO MAKE SURE THERE ARE SEMSEG RESULTS?
-        print("time sleep nav")
-        while self.__semseg.get_seg_result()[0] is None:
+        # try:
+        # Wait for segmentation results
+        while not self.__stop_thread and self.__semseg.get_seg_result()[0] is None:
             time.sleep(1)
 
         while not self.__stop_thread:
             # Calculate center of mass and adjust direction based on segmentation
             centroid = h.calculate_center_of_mass(self.__semseg.get_seg_result())
             if centroid:
-                self._adjust_direction_by_centroid(*centroid)
+                pass
+                # self._adjust_direction_by_centroid(*centroid)
+                # self._wait_for_request_done()  # Caught error
+            time.sleep(2)  # Allow RoBin to move forward between turns
 
-            # Change to infinite
-            # h.gs.driver.forward(const.MOVEMENT_DISTANCE)
-            print("Driver, Forward")
+        # except Exception as e:
+        #     self.write_log("Something else went wrong at 'navigate': " + str(e))
 
-            # Brief pause between movements
-            time.sleep(const.TIME_PAUSE)
-
+        # finally:
         # Stop semantic segmentation
         self.__semseg.stop()
 
