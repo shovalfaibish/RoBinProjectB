@@ -7,6 +7,7 @@ This is the main file. It contains a Navigation object, that handles the navigat
 
 import threading
 import time
+import mysql.connector
 from navigation_inner import Navigation
 
 
@@ -27,12 +28,21 @@ nav = Navigation()
 def look_for_tasks():
     # try:
     nav.connect_to_db()
+    t_database = mysql.connector.connect(user='robin', password='robin',
+                                         host='127.0.0.1',
+                                         database='RobinDB')
+    tasks_cursor = t_database.cursor()
+    tasks_cursor.execute("delete from drivertasks where Radius='0'")
+    tasks_cursor.execute("delete from navigationtasks where Status = 'RUNNING'")
+    tasks_cursor.execute("update communicationin set Status = 'NEW' where TimeStamp = '123456'")
+    tasks_cursor.execute("update modulejobs set ModuleStatus=1 where Module='Communication'")
+    t_database.commit()
     nav.write_log("Started look_for_tasks thread and connected to DB.")
 
     while True:
         # ManagerStatus in ModuleJobs table notifies on new tasks
-        nav.tasks_cursor.execute("SELECT ManagerStatus FROM modulejobs WHERE Module='Navigation'")
-        result = nav.tasks_cursor.fetchall()
+        tasks_cursor.execute("SELECT ManagerStatus FROM modulejobs WHERE Module='Navigation'")
+        result = tasks_cursor.fetchall()
 
         # Parse Navigation module line
         if len(result) == 1:
@@ -40,10 +50,10 @@ def look_for_tasks():
                 manager_status = ManagerStatus
                 if manager_status == 1:
                     # New tasks are in the NavigationTasks table
-                    nav.tasks_cursor.execute("SELECT TaskID, Command "
-                                             "FROM navigationtasks "
-                                             "WHERE Status='NEW'")
-                    result = nav.tasks_cursor.fetchall()
+                    tasks_cursor.execute("SELECT TaskID, Command "
+                                         "FROM navigationtasks "
+                                         "WHERE Status='NEW'")
+                    result = tasks_cursor.fetchall()
 
                     # Iterate new tasks
                     if len(result) > 0:
@@ -54,22 +64,22 @@ def look_for_tasks():
 
                                 # Set Start Navigation task to RUNNING
                                 nav.start_task_id = TaskID
-                                nav.tasks_cursor.execute("UPDATE navigationtasks "
-                                                         "SET Status='RUNNING' "
-                                                         f"WHERE TaskID='{TaskID}'")
+                                tasks_cursor.execute("UPDATE navigationtasks "
+                                                     "SET Status='RUNNING' "
+                                                     f"WHERE TaskID='{TaskID}'")
 
                             elif Command == "Stop":
                                 # TODO: STOP CAMERA??
                                 nav.stop()
                                 # Set Start Navigation and Stop Navigation tasks to DONE
-                                nav.tasks_cursor.execute("UPDATE navigationtasks "
-                                                         "SET Status='DONE' "
-                                                         f"WHERE TaskID='{TaskID}' OR TaskID='{nav.start_task_id}'")
+                                tasks_cursor.execute("UPDATE navigationtasks "
+                                                     "SET Status='DONE' "
+                                                     f"WHERE TaskID='{TaskID}' OR TaskID='{nav.start_task_id}'")
 
                                 # Update ModuleJobs, and set 1st bit of ModuleStatus to 1
-                                nav.tasks_cursor.execute("UPDATE modulejobs "
-                                                         "SET ManagerStatus=0, ModuleStatus = ModuleStatus | 1 "
-                                                         "WHERE Module='Navigation'")
+                                tasks_cursor.execute("UPDATE modulejobs "
+                                                     "SET ManagerStatus=0, ModuleStatus = ModuleStatus | 1 "
+                                                     "WHERE Module='Navigation'")
 
                                 # Reset TaskID info
                                 nav.start_task_id = ""
@@ -77,13 +87,13 @@ def look_for_tasks():
                                 nav.request_task_id = ""
 
                         # Update ModuleJobs that all pending tasks have been executed
-                        nav.tasks_cursor.execute("UPDATE modulejobs "
-                                                 "SET ManagerStatus=0, ModuleStatus = ModuleStatus | 1 "
-                                                 "WHERE Module='Navigation'")
+                        tasks_cursor.execute("UPDATE modulejobs "
+                                             "SET ManagerStatus=0, ModuleStatus = ModuleStatus | 1 "
+                                             "WHERE Module='Navigation'")
 
         # Commit SQL changes and sleep to avoid flooding the SQL server
-        nav.database.commit()
-        time.sleep(0.1)
+        t_database.commit()
+        # time.sleep(0.1)
 
     # # Errors
     # except Exception as e:
@@ -91,6 +101,8 @@ def look_for_tasks():
     #
     # finally:
     #     nav.disconnect_from_db()
+    #     tasks_cursor.close()
+    #     t_database.close()
 
 
 if __name__ == '__main__':
