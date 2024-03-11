@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -459,7 +459,7 @@ namespace ManagerGUI.Utility
         {
             List<string> lines = new List<string>();
             // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
-            string addDriverTask = "INSERT INTO DriverTasks (TaskID, Command, Value, Speed, Time, Quadrant, Radius, Status) " +
+            string addDriverTask = "INSERT INTO drivertasks (TaskID, Command, Value, Speed, Time, Quadrant, Radius, Status) " +
                 $"Values ('{TaskID}', '{type}', '{dist}', '{speed}', '{time}', '{quadrant}', '{radius}', 'NEW')";
 
             string updateModuleJobRow = "UPDATE modulejobs " +
@@ -513,7 +513,7 @@ namespace ManagerGUI.Utility
         {
             List<string> lines = new List<string>();
             // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
-            string addDriverTask = "INSERT INTO CraneTasks (TaskID, Command, Value, Speed, Time, Data, Status) " +
+            string addDriverTask = "INSERT INTO cranetasks (TaskID, Command, Value, Speed, Time, Data, Status) " +
                 $"VALUES ('{TaskID}', '{type}', '{value}', '{speed}', '{time}', '{data}', 'NEW')";
 
             string updateModuleJobRow = "UPDATE modulejobs " +
@@ -558,7 +558,7 @@ namespace ManagerGUI.Utility
         {
             List<string> lines = new List<string>();
             // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
-            string addDriverTask = "INSERT INTO CameraTasks (TaskID, Command, Value, Resolution, Status) " +
+            string addDriverTask = "INSERT INTO cameratasks (TaskID, Command, Value, Resolution, Status) " +
                                   $"VALUES ('{TaskID}', '{type}', '{value}', '{resolution}', 'NEW')";
             string addCommunicationTask = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                      $"VALUES ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'SEND_IMG', '', '{type},{saveLocally},{resolution}', 'NEW')";
@@ -700,7 +700,7 @@ namespace ManagerGUI.Utility
         {
             List<string> lines = new List<string>();
             // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
-            string addDriverTask = "INSERT INTO MaintenanceTasks (TimeStamp, Command, Status) " +
+            string addDriverTask = "INSERT INTO maintenancetasks (TimeStamp, Command, Status) " +
                 $"Values ('{DateTimeOffset.Now.ToUnixTimeMilliseconds()}', 'CLEAN_DB', 'NEW')";
 
             string updateModuleJobRow = "UPDATE modulejobs " +
@@ -750,7 +750,7 @@ namespace ManagerGUI.Utility
         {
             List<string> lines = new List<string>();
             // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
-            string addSensorsTask = "INSERT INTO SensorsTasks (TaskID, Command, Value, Status) " +
+            string addSensorsTask = "INSERT INTO sensorstasks (TaskID, Command, Value, Status) " +
                 $"Values ('{RequestID}', '{type}', '{sensorsDataRate}', 'NEW')";
 
             string updateModuleJobRow = "UPDATE modulejobs " +
@@ -1001,7 +1001,7 @@ namespace ManagerGUI.Utility
 
         public static bool AddManagerAction(string ActionID, string Module, string ActionType, string Action, string Status, string Details)
         {
-            string InsertManagerActions = "INSERT INTO ManagerActions (TimeStamp, ActionID, Module, ActionType, Action, Status, Details) " +
+            string InsertManagerActions = "INSERT INTO manageractions (TimeStamp, ActionID, Module, ActionType, Action, Status, Details) " +
                 $"Values ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, '{ActionID}', '{Module}', '{ActionType}', '{Action}', '{Status}', '{Details}')";
 
             try
