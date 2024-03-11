@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -75,7 +75,6 @@ namespace ManagerGUI
         string GroundSettingsTaskID;
         string CurrentCameraTaskID;
         string CurrentNavigationTaskID;
-        string CurrentNavigationRequestTaskID;
         double cameraCaptureSensorsSampleRate;
         double regularSensorsSampleRate;
 
@@ -181,7 +180,6 @@ namespace ManagerGUI
             GroundSettingsTaskID = null; // TODO perhaps turn this into a "Task" structure
             CurrentCameraTaskID = null;
             CurrentNavigationTaskID = null;
-            CurrentNavigationRequestTaskID = null;
 
             usedTaskIDs = new HashSet<string>();
             // logging
@@ -269,13 +267,13 @@ namespace ManagerGUI
             startup.AddMission(mission1);
 
             // Task #1: wrist to (15)
-            mission1.AddTask(new CraneTask(CraneTypes.Wrist, 15));
+            //mission1.AddTask(new CraneTask(CraneTypes.Wrist, 15));
 
             // Task #2: claw to -80
-            mission1.AddTask(new CraneTask(CraneTypes.Claw, -30));
+            //mission1.AddTask(new CraneTask(CraneTypes.Claw, -30));
 
             // Task #3: arm to (-90)
-            mission1.AddTask(new CraneTask(CraneTypes.Arm, -90));
+            //mission1.AddTask(new CraneTask(CraneTypes.Arm, -90));
 
             // Task #4: Driver Left 3 degrees (Driver lifesign event #1/2)
             mission1.AddTask(new DriverTask(DriverTypes.Left, 3, 0, 1, 0));
@@ -718,20 +716,19 @@ namespace ManagerGUI
                                     {
                                         ActionType = "External";
                                     }
+
+                                    else if (currentProject.Type == ProjectType.INTERNAL_REQUESTS)
+                                    {
+                                        ActionType = "InternalRequest";
+                                        SqlHelper.UpdateRequestStatus("navigation", TaskID, "DONE");
+                                    }
                                 }
                                 ManagerAction(TaskID, "Driver", ActionType, dTask.driverType.ToString(), "DONE", "");
 
                                 Tracking("CheckAllModules", $"Task #{currentTask.TaskStep} DONE.");
                                 currentTask.Status = ProjectStatus.DONE;
+                                Console.WriteLine("CD");
                                 currentTask = null;
-
-                                // Update request of NavigationRequests to DONE
-                                if (TaskID == CurrentNavigationRequestTaskID)
-                                {
-                                    string parentTaskID = GetParentTaskID(TaskID);
-                                    SqlHelper.UpdateRequestStatus("navigation", parentTaskID, "DONE");
-                                    CurrentNavigationRequestTaskID = null;
-                                }
                             }
                             break;
                         default:
@@ -918,47 +915,9 @@ namespace ManagerGUI
                     foreach (string msgLine in msgData)
                     {
                         string[] msgElem = msgLine.Split('|');
-                        int ID = Convert.ToInt32(msgElem[0]);
-                        string module = msgElem[2];
-                        string data = msgElem[3];
-
-                        // Commands are always a single-mission/single-task thing                
-                        string TaskID = GetTaskID(msgElem[1], 1, 1); // IS THIS CORRECT???
-                        CurrentNavigationRequestTaskID = TaskID;
-
-                        // Parse command
-                        string[] dataElem = data.Split(',');
-                        string cmd = dataElem[0];
-
-                        if (module == "Driver")
-                        {
-                            // TODO Add stop command to Driver and update ModuleJobs
-
-                            int cmdValue = Convert.ToInt32(dataElem[1]);
-                            int cmdSpeed = Convert.ToInt32(dataElem[2]);
-                            int cmdTime = Convert.ToInt32(dataElem[3]);
-                            int cmdQuadrant = Convert.ToInt32(dataElem[4]);
-                            int cmdRadius = Convert.ToInt32(dataElem[5]);
-
-                            // Add driver task based on the command
-                            bool sqlRes = SqlHelper.AddDriverTask(TaskID, cmd, cmdValue, cmdSpeed, cmdTime, cmdQuadrant, cmdRadius);
-                            if (sqlRes == false) return false; //TODO return or retry? debate this later.
-
-                            // TODO special Logger functions for commands, projects, etc?
-                            ManagerAction(TaskID, "Driver", "Internal", cmd, "NEW", $"(S:{cmdValue}, V:{cmdSpeed}, T:{cmdTime}");
-                            Tracking("CheckNavigation", $"Started Internal Command from Navigation: Module: Driver, Cmd: {cmd}, Val: {cmdValue}, Speed: {cmdSpeed}");
-
-                            // Add infinity forward drive task for continuous traversal
-                            TaskID = GetTaskID(msgElem[1], 1, 2); // IS THIS CORRECT???
-                            sqlRes = SqlHelper.AddDriverTask(TaskID, "Forward", -1, 40, -1, 1, -1);
-                            if (sqlRes == false) return false; //TODO return or retry? debate this later.
-
-                            ManagerAction(TaskID, "Driver", "Internal", "Forward", "NEW", $"(S:-1, V:40, T:-1");
-                            Tracking("CheckNavigation", $"Started Internal Command from Navigation: Module: Driver, Cmd: Forward, Val: -1, Speed: 40");
-                        }
-
-                        // Update request status to RUNNING // IS IT CORRECT HERE? REQUEST FINISHED BEFORE CHANGED TO RUNNING??
-                        SqlHelper.UpdateRequestStatus("navigation", msgElem[1], "RUNNING");
+                        string TaskID = msgElem[1];
+                        string data = msgElem[2];
+                        parseRequest(TaskID, data);
                     }
                 }
             }
@@ -1080,6 +1039,87 @@ namespace ManagerGUI
         }
 
         /// <summary>
+        /// Used by the "CheckNavigation" function to parse the incoming 
+        /// internal messages (requests)as sent by the Navigation module.
+        /// </summary>
+        /// <param name="data">the data to parse</param>
+        private void parseRequest(string TaskID, string data)
+        {
+            // Parse data and create a task
+            string[] TaskIDElems = TaskID.Split('.');
+            string[] dataElems = data.Split(',');
+            string ProjectID = TaskIDElems[0];
+            int taskStep = Convert.ToInt32(TaskIDElems[2]);
+            string type = dataElems[0];
+            string cmd = dataElems[1];
+            int value = Convert.ToInt32(dataElems[2]);
+            MissionTask reqTask;
+            MissionTask reqTaskForward = new DriverTask(DriverTypes.Forward, -1, -1, taskStep + 1); // Infinity forward
+            if (type == "Driver")
+            {
+                if (!Enum.TryParse(cmd, out DriverTypes dType))
+                {
+                    Error("parseRequest", $"Couldn't parse Driver Cmd Type. check string: {data}");
+                    return;
+                }
+                if (dType == DriverTypes.Curved)
+                {
+                    reqTask = new DriverTask(dType, value, Convert.ToInt32(dataElems[3]), Convert.ToInt32(dataElems[4]),
+                                             Convert.ToInt32(dataElems[5]), taskStep);
+                }
+                else
+                {
+                    reqTask = new DriverTask(dType, value, -1, taskStep);
+                }
+            }
+
+            else
+            {
+                Error("parseRequest", $"Couldn't parse request data. check string: {data}");
+                return;
+            }
+
+            // Add the task to an existing or new external project
+            if (currentProject != null && currentProject.ProjectID == ProjectID)
+            {
+                // same external project. add the data as a task to it.
+                if (currentProject.Missions.Count == 1)
+                {
+                    currentProject.Missions[0].AddTask(reqTask);
+                    currentProject.Missions[0].AddTask(reqTaskForward);
+                }
+                else
+                {
+                    // TODO this shouldnt happen
+                }
+            }
+            else
+            {
+                // the internal request project is new.
+                // stop the current project, if one exists
+                StopCurrenProject();
+
+                // Start a new project
+                // TODO robin name and ground name                
+                Mission reqMission = new Mission(1, "Internal_Request_Mission", new List<MissionTask>());
+                reqMission.AddTask(reqTask);
+                reqMission.AddTask(reqTaskForward);
+
+                currentProject = new Project(ProjectID, ProjectType.INTERNAL_REQUESTS, -1,
+                    "", "", new List<Mission>() { reqMission });
+                currentMission = null; // SHOVAL ADDED
+                currentTask = null;
+            }
+            ManagerAction(TaskID, type, "Internal Request", cmd, "NEW", $"Dist:{value}");
+
+            // Update request status to RUNNING
+            SqlHelper.UpdateRequestStatus("navigation", TaskID, "RUNNING");
+
+            string forwardTaskID = GetTaskID(currentProject.ProjectID, 1, taskStep + 1);
+            ManagerAction(forwardTaskID, type, "Internal Request", "Forward", "NEW", $"Dist:-1"); // Shoval: Might not always be true if not always driver
+        }
+
+        /// <summary>
         /// main function to analyze and run the current project
         /// </summary>
         private void ProjectHandler()
@@ -1107,19 +1147,32 @@ namespace ManagerGUI
                 }
                 else
                 {
+                    Console.WriteLine("ELSE");
+                    Console.WriteLine(currentMission.name);
+                    Console.WriteLine(currentMission.Status);
+                    Console.WriteLine("TASK COUNT:");
+                    Console.WriteLine(currentProject.Missions[0].tasks.Count);
+                    Console.WriteLine(currentProject.Missions[0].tasks[0].Type);
+
                     if (currentTask == null)
                     {
+                        Console.WriteLine("IF");
                         // there is a project/mission, but no task.
                         // it probably ended, select a new one.
                         StartNextTask();
                     }
                     else
                     {
+                        Console.WriteLine("IFELSE");
+                        Console.WriteLine(currentTask.Type);
+                        Console.WriteLine(currentTask.Status);
+                        Console.WriteLine(CurrentTaskInd);
+                                                
                         // special case. 
-                        // (1) if we're running an undless external task, and 
+                        // (1) if we're running an endless external task, and 
                         // the next task is a "Stop" command - cancel the current
                         // task.                        
-                        if (currentProject.Type == ProjectType.GROUNDSTATION_EXTERNAL &&
+                        if ((currentProject.Type == ProjectType.GROUNDSTATION_EXTERNAL || currentProject.Type == ProjectType.INTERNAL_REQUESTS) &&
                             currentMission.tasks.Count > CurrentTaskInd + 1)
                         {
                             // this is an external project, and there is another task.
@@ -1251,6 +1304,7 @@ namespace ManagerGUI
         /// </summary>
         private void StartNextTask()
         {
+            Console.WriteLine("SNT");
             if (currentProject == null) return;
 
             Mission _mission = currentProject.Missions[CurrentMissionInd];
@@ -1263,7 +1317,7 @@ namespace ManagerGUI
             else
             {
                 // no tasks left in the mission
-                if (currentProject.Type != ProjectType.GROUNDSTATION_EXTERNAL)
+                if ((currentProject.Type != ProjectType.GROUNDSTATION_EXTERNAL) && (currentProject.Type != ProjectType.INTERNAL_REQUESTS))
                 {
                     // log action
                     string MissionID = $"{currentProject.ProjectID}.{currentMission.MissionStep}";
@@ -1773,19 +1827,6 @@ namespace ManagerGUI
         {
             //CraneCommandSqlActions("CageClose", numCage.Value, numCage.Value);
             // TODO return the manual commands from manager
-        }
-
-        static string GetParentTaskID(string TaskID)
-        {
-            // Split the string based on dots
-            string[] splitParts = TaskID.Split('.');
-
-            // Remove the last two elements
-            string[] modifiedParts = new string[splitParts.Length - 2];
-            Array.Copy(splitParts, modifiedParts, modifiedParts.Length);
-
-            // Join the modified parts back together with dots
-            return string.Join(".", modifiedParts);
         }
 
         #endregion
