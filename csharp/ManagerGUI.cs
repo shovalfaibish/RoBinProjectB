@@ -727,7 +727,6 @@ namespace ManagerGUI
 
                                 Tracking("CheckAllModules", $"Task #{currentTask.TaskStep} DONE.");
                                 currentTask.Status = ProjectStatus.DONE;
-                                Console.WriteLine("CD");
                                 currentTask = null;
                             }
                             break;
@@ -917,7 +916,7 @@ namespace ManagerGUI
                         string[] msgElem = msgLine.Split('|');
                         string TaskID = msgElem[1];
                         string data = msgElem[2];
-                        parseRequest(TaskID, data);
+                        parseRequest("navigation", TaskID, data);
                     }
                 }
             }
@@ -1043,7 +1042,7 @@ namespace ManagerGUI
         /// internal messages (requests)as sent by the Navigation module.
         /// </summary>
         /// <param name="data">the data to parse</param>
-        private void parseRequest(string TaskID, string data)
+        private void parseRequest(string module, string TaskID, string data)
         {
             // Parse data and create a task
             string[] TaskIDElems = TaskID.Split('.');
@@ -1054,7 +1053,6 @@ namespace ManagerGUI
             string cmd = dataElems[1];
             int value = Convert.ToInt32(dataElems[2]);
             MissionTask reqTask;
-            MissionTask reqTaskForward = new DriverTask(DriverTypes.Forward, -1, -1, taskStep + 1); // Infinity forward
             if (type == "Driver")
             {
                 if (!Enum.TryParse(cmd, out DriverTypes dType))
@@ -1086,7 +1084,10 @@ namespace ManagerGUI
                 if (currentProject.Missions.Count == 1)
                 {
                     currentProject.Missions[0].AddTask(reqTask);
-                    currentProject.Missions[0].AddTask(reqTaskForward);
+                    if (type == "Driver")
+                    {
+                        currentProject.Missions[0].AddTask(new DriverTask(DriverTypes.Forward, -1, -1, taskStep + 1)); // Infinity forward
+                    }
                 }
                 else
                 {
@@ -1103,20 +1104,26 @@ namespace ManagerGUI
                 // TODO robin name and ground name                
                 Mission reqMission = new Mission(1, "Internal_Request_Mission", new List<MissionTask>());
                 reqMission.AddTask(reqTask);
-                reqMission.AddTask(reqTaskForward);
+                if (type == "Driver")
+                {
+                    reqMission.AddTask(new DriverTask(DriverTypes.Forward, -1, -1, taskStep + 1)); // Infinity forward
+                }
 
                 currentProject = new Project(ProjectID, ProjectType.INTERNAL_REQUESTS, -1,
                     "", "", new List<Mission>() { reqMission });
-                currentMission = null; // SHOVAL ADDED
+                currentMission = null;
                 currentTask = null;
             }
             ManagerAction(TaskID, type, "Internal Request", cmd, "NEW", $"Dist:{value}");
 
             // Update request status to RUNNING
-            SqlHelper.UpdateRequestStatus("navigation", TaskID, "RUNNING");
+            SqlHelper.UpdateRequestStatus(module, TaskID, "RUNNING");
 
-            string forwardTaskID = GetTaskID(currentProject.ProjectID, 1, taskStep + 1);
-            ManagerAction(forwardTaskID, type, "Internal Request", "Forward", "NEW", $"Dist:-1"); // Shoval: Might not always be true if not always driver
+            if (type == "Driver" && cmd != "Stop")
+            {
+                string forwardTaskID = GetTaskID(currentProject.ProjectID, 1, taskStep + 1);
+                ManagerAction(forwardTaskID, type, "Internal Request", "Forward", "NEW", $"Dist:-1");
+            }
         }
 
         /// <summary>
@@ -1147,32 +1154,19 @@ namespace ManagerGUI
                 }
                 else
                 {
-                    Console.WriteLine("ELSE");
-                    Console.WriteLine(currentMission.name);
-                    Console.WriteLine(currentMission.Status);
-                    Console.WriteLine("TASK COUNT:");
-                    Console.WriteLine(currentProject.Missions[0].tasks.Count);
-                    Console.WriteLine(currentProject.Missions[0].tasks[0].Type);
-
                     if (currentTask == null)
                     {
-                        Console.WriteLine("IF");
                         // there is a project/mission, but no task.
                         // it probably ended, select a new one.
                         StartNextTask();
                     }
                     else
                     {
-                        Console.WriteLine("IFELSE");
-                        Console.WriteLine(currentTask.Type);
-                        Console.WriteLine(currentTask.Status);
-                        Console.WriteLine(CurrentTaskInd);
-                                                
                         // special case. 
                         // (1) if we're running an endless external task, and 
                         // the next task is a "Stop" command - cancel the current
                         // task.                        
-                        if ((currentProject.Type == ProjectType.GROUNDSTATION_EXTERNAL || currentProject.Type == ProjectType.INTERNAL_REQUESTS) &&
+                        if (currentProject.Type == ProjectType.GROUNDSTATION_EXTERNAL &&
                             currentMission.tasks.Count > CurrentTaskInd + 1)
                         {
                             // this is an external project, and there is another task.
@@ -1304,7 +1298,6 @@ namespace ManagerGUI
         /// </summary>
         private void StartNextTask()
         {
-            Console.WriteLine("SNT");
             if (currentProject == null) return;
 
             Mission _mission = currentProject.Missions[CurrentMissionInd];
@@ -1527,6 +1520,10 @@ namespace ManagerGUI
                 if (cmd == "Start")
                 {
                     CurrentNavigationTaskID = TaskID;
+                }
+                if (cmd == "Stop")
+                {
+                    StopCurrenProject(); // Stop navigation requests to driver
                 }
                 bool sqlRes = SqlHelper.AddNavigationTask(TaskID, cmd);
                 if (sqlRes == false) return; //TODO return or retry? debate this later.
