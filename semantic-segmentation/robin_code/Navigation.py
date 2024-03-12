@@ -7,8 +7,8 @@ This is the main file. It contains a Navigation object, that handles the navigat
 
 import threading
 import time
-import mysql.connector
 from navigation_inner import Navigation
+from datetime import datetime
 
 
 ##############################
@@ -27,17 +27,17 @@ nav = Navigation()
 # Creates a thread to look for new tasks
 def look_for_tasks():
     # try:
-    nav.connect_to_db()
-    t_database = mysql.connector.connect(user='robin', password='robin',
-                                         host='127.0.0.1',
-                                         database='RobinDB')
-    tasks_cursor = t_database.cursor()
-    tasks_cursor.execute("delete from drivertasks where Radius='0'")
-    tasks_cursor.execute("delete from navigationtasks where Status = 'RUNNING'")
-    tasks_cursor.execute("update communicationin set Status = 'NEW' where TimeStamp = '123456'")
+    t_database, tasks_cursor = nav.create_connection_to_db()
+    nav.write_log("Started look_for_tasks thread and connected to DB.")
+
+    # DELETE EVENTUALLY
+    tasks_cursor.execute("delete from navigationrequests where Status='RUNNING' or Status='DONE'")
+    tasks_cursor.execute("delete from navigationtasks where Status = 'RUNNING' or Status = 'NEW'")
+    tasks_cursor.execute("delete from communicationin where Status = 'DONE'")
+    dtime = datetime.now().strftime("%d%m%y_%H%M%S%f")
+    tasks_cursor.execute(f"insert into communicationin (TimeStamp, Type, Data, Status) values ('1', 'MANUAL', '2,{dtime},Navigation,Start', 'NEW')")
     tasks_cursor.execute("update modulejobs set ModuleStatus=1 where Module='Communication'")
     t_database.commit()
-    nav.write_log("Started look_for_tasks thread and connected to DB.")
 
     while True:
         # ManagerStatus in ModuleJobs table notifies on new tasks
@@ -93,16 +93,14 @@ def look_for_tasks():
 
         # Commit SQL changes and sleep to avoid flooding the SQL server
         t_database.commit()
-        # time.sleep(0.1)
+        time.sleep(0.1)
 
     # # Errors
     # except Exception as e:
     #     nav.write_log("Something else went wrong at 'look_for_tasks': " + str(e))
     #
     # finally:
-    #     nav.disconnect_from_db()
-    #     tasks_cursor.close()
-    #     t_database.close()
+    #     nav.disconnect_from_db(t_database, tasks_cursor)
 
 
 if __name__ == '__main__':
