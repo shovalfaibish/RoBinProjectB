@@ -5,6 +5,7 @@ import math
 import os
 import threading
 import mysql.connector
+from mysql.connector import pooling
 from datetime import datetime
 from pathlib import Path
 from tools.infer import SemSeg
@@ -18,31 +19,35 @@ class Navigation:
 
     def __init__(self, lab_exp=False):
         self.__stop_thread = False
+        self.__nav_th = None
         self.__lab_exp = lab_exp
         self.__semseg = SemSeg(const.CFG_FILE_PATH, self.__lab_exp)
         self.logfile = os.path.join(Path.home(), "RoBin_Files/Logs/Latest/Navigation_Logs.txt")
-
-        self.r_database = None
-        self.requests_cursor = None
 
         self.start_task_id = ""
         self.project_id = None
         self.request_i = 1
         self.request_task_id = None
 
-    def connect_to_db(self):
+        self.db_pool = pooling.MySQLConnectionPool(pool_name="RoBinConn", pool_size=5,
+                                                   user='robin', password='robin',
+                                                   host='127.0.0.1',
+                                                   database='RobinDB')
+        self.r_database, self.requests_cursor = self.create_connection_to_db()
+
+    def create_connection_to_db(self):
         try:
-            self.r_database = mysql.connector.connect(user='robin', password='robin',
-                                                      host='127.0.0.1',
-                                                      database='RobinDB')
-            self.requests_cursor = self.r_database.cursor()
+            database = self.db_pool.get_connection()
+            cursor = database.cursor()
+            return database, cursor
 
         except mysql.connector.Error as err:
             self.write_log(f"Something went wrong with MySQL: {err}")
 
-    def disconnect_from_db(self):
-        self.requests_cursor.close()
-        self.r_database.close()
+    @staticmethod
+    def disconnect_from_db(database, cursor):
+        cursor.close()
+        database.close()
 
     def write_log(self, msg):
         # Write to file and flush to stdout
@@ -73,22 +78,24 @@ class Navigation:
         self.write_log(f"Sent request {self.request_task_id} Values: {data}")
         self.request_i += 2
 
+        self._wait_for_request_done()
+
     def _get_request_status(self):
         if self.__stop_thread:
             return None
-        print(f"RTI: {self.request_task_id}")
+
+        self.r_database.commit()
         self.requests_cursor.execute("SELECT Status "
                                      "FROM navigationrequests "
                                      f"WHERE TaskID='{self.request_task_id}'")
-        result = self.requests_cursor.fetchall()
-        return result[0][0] if result else None
+        result = self.requests_cursor.fetchone()
+        return result[0] if result else None
 
     def _wait_for_request_done(self):
         while not self.__stop_thread:
             status = self._get_request_status()
-            print(status)
             if status is None:  # Error
-                return
+                raise "_wait_for_request_done CAUGHT NULL"
             if status == "DONE":
                 self.write_log(f"Request {self.request_task_id} DONE.")
                 break
@@ -102,8 +109,8 @@ class Navigation:
 
     def _turn(self, degrees):
         degrees = int(degrees * const.DEGREES_FIX)
-        # if abs(degrees) < const.DEGREES_THRESHOLD:
-        #     self.write_log(f"No adjustment: {abs(degrees)} degrees is below threshold")
+        if abs(degrees) < const.DEGREES_THRESHOLD:
+            self.write_log(f"No adjustment: {abs(degrees)} degrees is below threshold")
 
         if degrees > 0:
             self._send_request_to_module(self._create_driver_request("Right", degrees, 40))
@@ -125,7 +132,9 @@ class Navigation:
         self.write_log("Started navigation process.")
         self.__stop_thread = False
         self.project_id = datetime.now().strftime("%d%m%y_%H%M%S%f")
-        threading.Thread(target=self.navigate).start()
+        if self.__nav_th is None:
+            print("bbbbbbbbbb")
+            self.__nav_th = threading.Thread(target=self.navigate).start()
 
     def stop(self):
         self.write_log("Stopped navigation process.")
@@ -152,7 +161,6 @@ class Navigation:
             centroid = h.calculate_center_of_mass(self.__semseg.get_seg_result())
             if centroid:
                 self._adjust_direction_by_centroid(*centroid)
-                self._wait_for_request_done()
             time.sleep(2)  # Allow RoBin to move forward between turns
 
         # except Exception as e:
@@ -161,6 +169,7 @@ class Navigation:
         # finally:
         # Stop semantic segmentation
         self.__semseg.stop()
+        # self. disconnect_from_db(self.r_database, self.requests_cursor)
 
         if self.__lab_exp:
             h.delete_dir(f"{const.LOCAL_CAMERA_OUTPUT_PATH}_temp")
