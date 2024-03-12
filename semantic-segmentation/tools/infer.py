@@ -25,12 +25,13 @@ from robin_code import constants as const
 class SemSeg:
     def __init__(self, cfg_file: str, lab_exp=False) -> None:
         self.logfile = os.path.join(Path.home(), "RoBin_Files/Logs/Latest/Semseg_Logs.txt")
+        self.semseg_th = None
+        self.lab_exp = lab_exp
 
         self._initialize_from_config(cfg_file)
         self._initialize_model()
         self._initialize_preprocessing()
         self._initialize_file_paths()
-        self._initialize_state(lab_exp)
 
     def _initialize_from_config(self, cfg_file: str) -> None:
         with open(cfg_file) as f:
@@ -63,15 +64,14 @@ class SemSeg:
         self.save_dir = Path(self.cfg['SAVE_DIR'])
         self.save_dir.mkdir(exist_ok=True)
 
-    def _initialize_state(self, lab_exp) -> None:
+    def _initialize_state(self, timestamp) -> None:
         self.alpha = 0.25
         self.seq_pred = None  # Sequential prediction
         self.seg_result = None
         self.curr_filename = None
         self.result_lock = threading.Lock()
         self.stop_thread = False
-        self.timestamp = -1
-        self.lab_exp = lab_exp
+        self.timestamp = timestamp
 
     def _write_log(self, msg):
         # Write to file and flush to stdout
@@ -135,7 +135,8 @@ class SemSeg:
         # Resize and save image
         image = read_image(str(img_fname))
         image = T.Resize((int(image.shape[1] * 0.1), int(image.shape[2] * 0.1)))(image)
-        TF.to_pil_image(image).save(self.save_dir / f"{self.timestamp}/camera/{str(img_fname.stem)}.jpg")
+        if self.timestamp != -1:
+            TF.to_pil_image(image).save(self.save_dir / f"{self.timestamp}/camera/{str(img_fname.stem)}.jpg")
 
         # if self.lab_exp:
         #     os.remove(img_fname)
@@ -159,7 +160,6 @@ class SemSeg:
             if image_file is not None:
                 self.predict(image_file)
             time.sleep(2) # TODO: Change as needed
-        print("STOPSS")
 
     def get_seg_result(self):
         with self.result_lock:
@@ -167,9 +167,10 @@ class SemSeg:
 
     def start(self, timestamp):
         self._write_log("Started semantic segmentation process.")
-        self.stop_thread = False
-        self.timestamp = timestamp
-        threading.Thread(target=self._perform_semantic_segmentation, name="Semseg_th").start()
+        self._initialize_state(timestamp)
+        if self.semseg_th is None:
+            print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            self.semseg_th = threading.Thread(target=self._perform_semantic_segmentation, name="Semseg_th").start()
 
     def stop(self):
         self._write_log("Stopped semantic segmentation process.")
