@@ -396,15 +396,15 @@ namespace ManagerGUI.Utility
             switch (module)
             {
                 case MissionTaskModule.Driver:
-                    ModuleName = "Driver";
+                    ModuleName = "driver";
                     break;
                 case MissionTaskModule.Crane:
-                    ModuleName = "Crane";
+                    ModuleName = "crane";
                     break;
                 default:
                     break;
             }
-            string TasksTable = ModuleName + "Tasks";
+            string TasksTable = ModuleName + "tasks";
 
             string updateModuleJobRow = "UPDATE modulejobs " +
                                        $"SET ManagerStatus=1 " +
