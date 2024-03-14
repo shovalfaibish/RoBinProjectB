@@ -17,6 +17,7 @@ from datetime import datetime
 
 
 nav = Navigation()
+# TODO: ADD SEMSEG ON CONSTANT IMAGE AT STARTUP
 
 
 ##############################
@@ -62,7 +63,7 @@ def look_for_tasks():
                         if len(result) > 0:
                             for (TaskID, Command) in result:
                                 if Command == "Start":
-                                    # TODO: START CAMERA??
+                                    # TODO: START CAMERa start_internal using request
                                     nav.start()
 
                                     # Set Start Navigation task to RUNNING
@@ -72,7 +73,7 @@ def look_for_tasks():
                                                          f"WHERE TaskID='{TaskID}'")
 
                                 elif Command == "Stop":
-                                    # TODO: STOP CAMERA??
+                                    # TODO: STOP CAMERA?? wait for it to signal done, then continue
                                     nav.stop()
                                     # Set Start Navigation and Stop Navigation tasks to DONE
                                     tasks_cursor.execute("UPDATE navigationtasks "
