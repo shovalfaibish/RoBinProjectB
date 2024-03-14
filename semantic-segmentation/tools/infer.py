@@ -29,7 +29,6 @@ class SemSeg:
         self.lab_exp = lab_exp
 
         self._initialize_from_config(cfg_file)
-        self._initialize_model()
         self._initialize_preprocessing()
         self._initialize_file_paths()
 
@@ -45,7 +44,6 @@ class SemSeg:
         self.labels = eval(self.cfg['DATASET']['NAME']).CLASSES
         self.overlay = self.cfg['TEST']['OVERLAY']
 
-    def _initialize_model(self) -> None:
         self.model = eval(self.cfg['MODEL']['NAME'])(self.cfg['MODEL']['BACKBONE'], len(self.palette))
         self.model.load_state_dict(torch.load(self.cfg['TEST']['MODEL_PATH'], map_location='cpu'))
         self.model = self.model.to(self.device)
@@ -79,7 +77,7 @@ class SemSeg:
             f.write(msg + '\n')
         print(msg, flush=True)
 
-    def preprocess(self, image: Tensor) -> Tensor:
+    def _preprocess(self, image: Tensor) -> Tensor:
         H, W = image.shape[1:]
         self._write_log(f"Original Image Size > {H}x{W}")
 
@@ -94,7 +92,7 @@ class SemSeg:
         image = self.tf_pipeline(image).to(self.device)
         return image
 
-    def postprocess(self, orig_img: Tensor, seg_map: Tensor, img_fname) -> Tensor:
+    def _postprocess(self, orig_img: Tensor, seg_map: Tensor, img_fname) -> None:
         # Resize to original image size
         seg_map = F.interpolate(seg_map, size=orig_img.shape[-2:], mode='bilinear', align_corners=True)
 
@@ -125,30 +123,26 @@ class SemSeg:
 
     @torch.inference_mode()
     @timer
-    def model_forward(self, img: Tensor) -> Tensor:
+    def _model_forward(self, img: Tensor) -> Tensor:
         return self.model(img)
 
-    def predict(self, img_fname) -> Tensor:
-        if self.timestamp == -1:
-            return
-
+    def _predict(self, img_fname) -> None:
         # Resize and save image
         image = read_image(str(img_fname))
         image = T.Resize((int(image.shape[1] * 0.1), int(image.shape[2] * 0.1)))(image)
         if self.timestamp != -1:
             TF.to_pil_image(image).save(self.save_dir / f"{self.timestamp}/camera/{str(img_fname.stem)}.jpg")
 
-        # if self.lab_exp:
-        #     os.remove(img_fname)
+            # if self.lab_exp:
+            #     os.remove(img_fname)
 
-        # Process
-        preprocess_image = self.preprocess(image)
-        seg_map = self.model_forward(preprocess_image)
-        seg_map = self.postprocess(image, seg_map, img_fname)
-        return seg_map
+            # Process
+            preprocess_image = self._preprocess(image)
+            seg_map = self._model_forward(preprocess_image)
+            self._postprocess(image, seg_map, img_fname)
 
     def _perform_semantic_segmentation(self):
-        while not self.stop_thread or self.timestamp == -1:
+        while not self.stop_thread:
             # Get oldest / newest image from camera
             if self.lab_exp:
                 files = Path(f"{const.LOCAL_CAMERA_OUTPUT_PATH}_temp").glob('*.*')
@@ -158,8 +152,8 @@ class SemSeg:
                 image_file = max(files, key=lambda f: f.name, default=None)
 
             if image_file is not None:
-                self.predict(image_file)
-            time.sleep(2) # TODO: Change as needed
+                self._predict(image_file)
+            time.sleep(2)  # TODO: Change as needed
 
     def get_seg_result(self):
         with self.result_lock:
@@ -168,12 +162,10 @@ class SemSeg:
     def start(self, timestamp):
         self._write_log("Started semantic segmentation process.")
         self._initialize_state(timestamp)
-        if self.semseg_th is None:
-            print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-            self.semseg_th = threading.Thread(target=self._perform_semantic_segmentation, name="Semseg_th").start()
+        self.semseg_th = threading.Thread(target=self._perform_semantic_segmentation, name="Semseg_th")
+        self.semseg_th.start()
 
     def stop(self):
         self._write_log("Stopped semantic segmentation process.")
         self.stop_thread = True
         self.timestamp = -1
-        self.seq_pred = None
