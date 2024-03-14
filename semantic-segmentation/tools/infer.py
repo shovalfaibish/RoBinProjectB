@@ -141,6 +141,13 @@ class SemSeg:
             seg_map = self._model_forward(preprocess_image)
             self._postprocess(image, seg_map, img_fname)
 
+    def predict_on_startup(self):
+        # Run on startup to reduce initial overhead
+        image = read_image(const.EXAMPLE_IMAGE_PATH)
+        image = T.Resize((int(image.shape[1] * 0.1), int(image.shape[2] * 0.1)))(image)
+        preprocess_image = self._preprocess(image)
+        self._model_forward(preprocess_image)
+
     def _perform_semantic_segmentation(self):
         while not self.stop_thread:
             # Get oldest / newest image from camera
