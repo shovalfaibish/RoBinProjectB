@@ -916,7 +916,7 @@ namespace ManagerGUI
                         string[] msgElem = msgLine.Split('|');
                         string TaskID = msgElem[1];
                         string data = msgElem[2];
-                        parseRequest("navigation", TaskID, data);
+                        ParseRequest("navigation", TaskID, data);
                     }
                 }
             }
@@ -1039,10 +1039,10 @@ namespace ManagerGUI
 
         /// <summary>
         /// Used by the "CheckNavigation" function to parse the incoming 
-        /// internal messages (requests)as sent by the Navigation module.
+        /// internal messages (requests) as sent by the Navigation module.
         /// </summary>
         /// <param name="data">the data to parse</param>
-        private void parseRequest(string module, string TaskID, string data)
+        private void ParseRequest(string module, string TaskID, string data)
         {
             // Parse data and create a task
             string[] TaskIDElems = TaskID.Split('.');
@@ -1057,7 +1057,7 @@ namespace ManagerGUI
             {
                 if (!Enum.TryParse(cmd, out DriverTypes dType))
                 {
-                    Error("parseRequest", $"Couldn't parse Driver Cmd Type. check string: {data}");
+                    Error("ParseRequest", $"Couldn't parse Driver Cmd Type. check string: {data}");
                     return;
                 }
                 if (dType == DriverTypes.Curved)
@@ -1073,7 +1073,7 @@ namespace ManagerGUI
 
             else
             {
-                Error("parseRequest", $"Couldn't parse request data. check string: {data}");
+                Error("ParseRequest", $"Couldn't parse request data. check string: {data}");
                 return;
             }
 
