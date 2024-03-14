@@ -21,6 +21,7 @@ TRAIN_SCRIPT_PATH = f"{PREFIX}tools/train.py"
 
 
 CFG_FILE_PATH = f"{PREFIX}configs/ade20k.yaml"
+EXAMPLE_IMAGE_PATH = f"{PREFIX}data/example.jpg"
 
 
 ##############################
@@ -30,7 +31,7 @@ CFG_FILE_PATH = f"{PREFIX}configs/ade20k.yaml"
 
 TARGET_COLOR = (255, 255, 255)
 WHITE_THRESHOLD = 230
-IMG_WIDTH, IMG_HEIGHT = 192, 108
+IMG_WIDTH, IMG_HEIGHT = 128, 72
 VIDEO_WIDTH, VIDEO_HEIGHT = IMG_WIDTH * 3, IMG_HEIGHT
 BLACK_IMAGE = np.zeros((IMG_HEIGHT, IMG_WIDTH, 3), np.uint8)
 
@@ -43,7 +44,7 @@ ARUCO_PARAMS = aruco.DetectorParameters()
 ##############################
 
 
-TIME_PAUSE = 1.5
+TIME_PAUSE = 3
 ARUCO_TIME_PAUSE = 5
 MOVEMENT_DISTANCE = 80
 DEGREES_THRESHOLD = 4
