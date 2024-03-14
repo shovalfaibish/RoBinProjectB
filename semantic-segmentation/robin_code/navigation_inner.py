@@ -29,10 +29,9 @@ class Navigation:
         self.request_i = 1
         self.request_task_id = None
 
-        self.db_pool = pooling.MySQLConnectionPool(pool_name="RoBinConn", pool_size=5,
+        self.db_pool = pooling.MySQLConnectionPool(pool_name="RoBinConn", pool_size=2,
                                                    user='robin', password='robin',
-                                                   host='127.0.0.1',
-                                                   database='RobinDB')
+                                                   host='127.0.0.1', database='RobinDB')
         self.r_database, self.requests_cursor = self.create_connection_to_db()
 
     def create_connection_to_db(self):
@@ -42,7 +41,7 @@ class Navigation:
             return database, cursor
 
         except mysql.connector.Error as err:
-            self.write_log(f"Something went wrong with MySQL: {err}")
+            self.write_log(f"MySQL error: {err}")
 
     @staticmethod
     def disconnect_from_db(database, cursor):
@@ -64,6 +63,7 @@ class Navigation:
 
     def _send_request_to_module(self, data):
         self.request_task_id = str(self.project_id) + ".1." + str(self.request_i)
+
         # Insert new request
         self.requests_cursor.execute("INSERT INTO navigationrequests "
                                      "(TaskID, Data, Status) "
@@ -78,6 +78,7 @@ class Navigation:
         self.write_log(f"Sent request {self.request_task_id} Values: {data}")
         self.request_i += 2
 
+        # Wait for request status DONE
         self._wait_for_request_done()
 
     def _get_request_status(self):
@@ -95,7 +96,7 @@ class Navigation:
         while not self.__stop_thread:
             status = self._get_request_status()
             if status is None:  # Error
-                raise "_wait_for_request_done CAUGHT NULL"
+                raise "Error in function '_wait_for_request_done': caught Status=None"
             if status == "DONE":
                 self.write_log(f"Request {self.request_task_id} DONE.")
                 break
@@ -132,9 +133,8 @@ class Navigation:
         self.write_log("Started navigation process.")
         self.__stop_thread = False
         self.project_id = datetime.now().strftime("%d%m%y_%H%M%S%f")
-        if self.__nav_th is None:
-            print("bbbbbbbbbb")
-            self.__nav_th = threading.Thread(target=self.navigate).start()
+        self.__nav_th = threading.Thread(target=self.navigate, name="Nav_th")
+        self.__nav_th.start()
 
     def stop(self):
         self.write_log("Stopped navigation process.")
@@ -151,26 +151,25 @@ class Navigation:
         h.setup_output_folders(timestamp)
         self.__semseg.start(timestamp)
 
-        # try:
-        # Wait for segmentation results
-        while not self.__stop_thread and self.__semseg.get_seg_result()[0] is None:
-            time.sleep(1)
+        try:
+            # Wait for segmentation results
+            while not self.__stop_thread and self.__semseg.get_seg_result()[0] is None:
+                time.sleep(1)
 
-        while not self.__stop_thread:
-            # Calculate center of mass and adjust direction based on segmentation
-            centroid = h.calculate_center_of_mass(self.__semseg.get_seg_result())
-            if centroid:
-                self._adjust_direction_by_centroid(*centroid)
-            time.sleep(2)  # Allow RoBin to move forward between turns
+            while not self.__stop_thread:
+                # Calculate center of mass and adjust direction based on segmentation
+                centroid = h.calculate_center_of_mass(self.__semseg.get_seg_result())
+                if centroid:
+                    self._adjust_direction_by_centroid(*centroid)
+                time.sleep(2)  # Allow RoBin to move forward between turns
 
-        # except Exception as e:
-        #     self.write_log("Something else went wrong at 'navigate': " + str(e))
+        except Exception as e:
+            self.write_log("Error in function 'navigate': " + str(e))
 
-        # finally:
-        # Stop semantic segmentation
-        self.__semseg.stop()
-        # self. disconnect_from_db(self.r_database, self.requests_cursor)
+        finally:
+            # Stop semantic segmentation
+            self.__semseg.stop()
 
-        if self.__lab_exp:
-            h.delete_dir(f"{const.LOCAL_CAMERA_OUTPUT_PATH}_temp")
-        # TODO: AUTOMATICALLY CREATE VIDEO?
+            if self.__lab_exp:
+                h.delete_dir(f"{const.LOCAL_CAMERA_OUTPUT_PATH}_temp")
+            # TODO: AUTOMATICALLY CREATE VIDEO?
