@@ -21,7 +21,10 @@ class Navigation:
         self.__stop_thread = False
         self.__nav_th = None
         self.__lab_exp = lab_exp
+
         self.__semseg = SemSeg(const.CFG_FILE_PATH, self.__lab_exp)
+        self.__semseg.predict_on_startup()
+
         self.logfile = os.path.join(Path.home(), "RoBin_Files/Logs/Latest/Navigation_Logs.txt")
 
         self.start_task_id = ""
