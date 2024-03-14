@@ -554,7 +554,7 @@ namespace ManagerGUI.Utility
             return true;
         }
 
-        public static bool AddCameraTask(string TaskID, string type, int value, string saveLocally, string resolution)
+        public static bool AddCameraTask(string TaskID, string type, int value, string saveLocally, string resolution, bool internalCamera=false)
         {
             List<string> lines = new List<string>();
             // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
@@ -564,8 +564,12 @@ namespace ManagerGUI.Utility
                      $"VALUES ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'SEND_IMG', '', '{type},{saveLocally},{resolution}', 'NEW')";
 
             string updateModuleJobRow = "UPDATE modulejobs " +
-                                          $"SET ManagerStatus=1 " +
-                                          $"WHERE Module='Camera' OR Module='Communication'";
+                                        "SET ManagerStatus=1 " + 
+                                        "WHERE Module='Camera'";
+            if (!internalCamera)
+            {
+                updateModuleJobRow += " OR Module='Communication'";
+            }
             try
             {
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
@@ -575,9 +579,12 @@ namespace ManagerGUI.Utility
                     {
                         command.ExecuteNonQuery();
                     }
-                    using (MySqlCommand command = new MySqlCommand(addCommunicationTask, connection))
+                    if (!internalCamera)
                     {
-                        command.ExecuteNonQuery();
+                        using (MySqlCommand command = new MySqlCommand(addCommunicationTask, connection))
+                        {
+                            command.ExecuteNonQuery();
+                        }
                     }
                     using (MySqlCommand command = new MySqlCommand(updateModuleJobRow, connection))
                     {
