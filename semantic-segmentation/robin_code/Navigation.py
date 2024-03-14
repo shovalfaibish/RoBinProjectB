@@ -17,7 +17,6 @@ from datetime import datetime
 
 
 nav = Navigation()
-# TODO: ADD SEMSEG ON CONSTANT IMAGE AT STARTUP
 
 
 ##############################
