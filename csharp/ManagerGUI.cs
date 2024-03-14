@@ -1077,10 +1077,10 @@ namespace ManagerGUI
                 return;
             }
 
-            // Add the task to an existing or new external project
+            // Add the task to an existing or new internal request project
             if (currentProject != null && currentProject.ProjectID == ProjectID)
             {
-                // same external project. add the data as a task to it.
+                // same internal request project. add the data as a task to it.
                 if (currentProject.Missions.Count == 1)
                 {
                     currentProject.Missions[0].AddTask(reqTask);
@@ -1119,10 +1119,10 @@ namespace ManagerGUI
             // Update request status to RUNNING
             SqlHelper.UpdateRequestStatus(module, TaskID, "RUNNING");
 
-            if (type == "Driver" && cmd != "Stop")
+            if (type == "Driver")
             {
                 string forwardTaskID = GetTaskID(currentProject.ProjectID, 1, taskStep + 1);
-                ManagerAction(forwardTaskID, type, "Internal Request", "Forward", "NEW", $"Dist:-1");
+                ManagerAction(forwardTaskID, type, "Internal Request", "Forward", "NEW", $"Dist:infinity");
             }
         }
 
@@ -1523,6 +1523,7 @@ namespace ManagerGUI
                 }
                 if (cmd == "Stop")
                 {
+                    // TODO: STOP CAMERA, WAIT FOR ALL REQUSTS TO BE DONE SHOVAL
                     StopCurrenProject(); // Stop navigation requests to driver
                 }
                 bool sqlRes = SqlHelper.AddNavigationTask(TaskID, cmd);
