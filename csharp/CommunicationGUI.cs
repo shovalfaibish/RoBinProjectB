@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -133,10 +133,10 @@ namespace CommunicationGUI
             {
                 Stopwatch pingTimer = new Stopwatch();
                 pingTimer.Start();
-                while (scanner.countIpPings < 253) 
+                while (scanner.countIpPings < 253)
                 {
                     if (pingTimer.ElapsedMilliseconds > msToConnect / 2) break;
-                    Thread.Sleep(100); 
+                    Thread.Sleep(100);
                 }
                 pingTimer.Stop();
             });
@@ -157,7 +157,7 @@ namespace CommunicationGUI
             {
                 bool connected = false;
                 var client = new TcpClient();
-                await Task.Run(() => 
+                await Task.Run(() =>
                 {
                     if (client.ConnectAsync(IP, port).Wait(3000))
                     {
@@ -664,7 +664,7 @@ namespace CommunicationGUI
 
         class CompareImageNamesByIndex : IComparer<string>
         {
-            public int Compare (string s1, string s2)
+            public int Compare(string s1, string s2)
             {
                 string f1 = Path.GetFileName(s1);
                 string f2 = Path.GetFileName(s2);
@@ -738,9 +738,9 @@ namespace CommunicationGUI
             return;
         }
 
-        private void finishImageSendingProcess() 
+        private void finishImageSendingProcess()
         {
-            while (!stopImageThread) 
+            while (!stopImageThread)
             {
                 System.Threading.Thread.Sleep(1000);
             }
@@ -797,7 +797,7 @@ namespace CommunicationGUI
                     tryDelete++;
                     System.Threading.Thread.Sleep(100);
                 }
-            }               
+            }
             return;
         }
 
@@ -826,7 +826,7 @@ namespace CommunicationGUI
             }
             catch (Exception e)
             {
-                Error("RobinInternal", "Problem adding a new manual command update", e);
+                Error("RobinInternal", "Problem adding a new internal command update", e);
             }
             //logger.NewCommand(data);
         }
@@ -928,7 +928,7 @@ namespace CommunicationGUI
             // the "slash" direction is different between Windows and Linux..
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                unknownXmlPath = robinFolder.Replace(@"\",@"\\") + $"Unknown\\\\Unknown{suffix}.xml";
+                unknownXmlPath = robinFolder.Replace(@"\", @"\\") + $"Unknown\\\\Unknown{suffix}.xml";
             }
             else
             {
@@ -967,12 +967,12 @@ namespace CommunicationGUI
         /// </summary>
         /// <returns></returns>
         private async Task RobinRequestDB()
-        {            
+        {
             try
             {
                 // update the CommunicationIn&ModuleJobs sql tables
                 int statusNumber = GetStatusNumber(true);
-                bool result = await SqlHelper.UpdateCommandReceived(statusNumber, "REQUEST_DB", "", "");                
+                bool result = await SqlHelper.UpdateCommandReceived(statusNumber, "REQUEST_DB", "", "");
                 if (result == false)
                 {
                     // TODO should I do anything here? notify the Ground perhaps?
@@ -1075,12 +1075,13 @@ namespace CommunicationGUI
         {
             // module jobs reset
             bool res = await SqlHelper.UpdateModuleJobsStatus(0, 0, true);
-            
+
             // reset all moduleTasks tables
             List<string> tablesToReset = new List<string>()
             {
-                "MaintenanceTasks", "CommunicationIn", "CommunicationOut",
-                "DriverTasks", "CraneTasks", "CameraTasks", "NavigationTasks",
+                "maintenancetasks", "communicationin", "communicationout",
+                "drivertasks", "cranetasks", "cameratasks", "navigationtasks",
+                "navigationrequests",
             };
             foreach (string table in tablesToReset)
             {
