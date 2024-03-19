@@ -23,7 +23,7 @@ using System.Diagnostics;
 
 /*********************************************************************************\
  **********************************************************************************
- *** --VERSION 2.5-- of "Manager".                                              ***
+ *** --VERSION 2.7-- of "Manager".                                              ***
  *** This application is used to create, ditribute and monitor all the rest     ***
  *** of the modules that the robin uses.                                        ***
  ***                                                                            ***
@@ -44,7 +44,7 @@ using System.Diagnostics;
  *** going correctly and resolve any issues the modules run into.               ***
  ***                                                                            ***
  *** the manager's main SQL table to look at is "ModuleJobs", and all the       ***
- *** robin's modules update their activity their.                               ***
+ *** robin's modules update their activity there.                               ***
  ***                                                                            ***
  **********************************************************************************
  \********************************************************************************/
@@ -135,10 +135,10 @@ namespace ManagerGUI
             {
                 // the log folder was created, create the comm log 
                 LogFilePath = latestLogDir + "/Manager_Logs.txt";
-                //logger.SetLogFilePath(LogFilePath);
+                logger.SetLogFilePath(LogFilePath);
             }
-            //logger.StartSetup(simulation);
-            //logger.ReportLogPath();
+            logger.StartSetup(simulation);
+            logger.ReportLogPath();
         }
 
         /// <summary>
@@ -244,8 +244,7 @@ namespace ManagerGUI
                     try
                     {
                         ProjectHandler();
-                    }
-                    catch (Exception e)
+                    } catch (Exception e)
                     {
                         Error("ProjectHandler", "ProjectHandler crash", e);
                     }
@@ -537,8 +536,7 @@ namespace ManagerGUI
 
                             // log action
                             ManagerAction("NA", "Driver", "Calibrate", cmd, "NEW", "");
-                        }
-                        else if (type == "Crane")
+                        } else if (type == "Crane")
                         {
                             string relevantData = string.Join(",", dataElems.Skip(3));
 
@@ -985,8 +983,7 @@ namespace ManagerGUI
                 {
                     extTask = new DriverTask(dType, value, -1, taskStep);
                 }
-            }
-            else if (type == "Crane")
+            } else if (type == "Crane")
             {
                 if (!Enum.TryParse(cmd, out CraneTypes cType))
                 {
@@ -1151,16 +1148,14 @@ namespace ManagerGUI
                         // no mission/task started. start one.
                         StartNextTask();
                     }
-                }
-                else
+                } else
                 {
                     if (currentTask == null)
                     {
                         // there is a project/mission, but no task.
                         // it probably ended, select a new one.
                         StartNextTask();
-                    }
-                    else
+                    } else
                     {
                         // special case. 
                         // (1) if we're running an endless external task, and 
@@ -1306,8 +1301,7 @@ namespace ManagerGUI
             {
                 // we still have tasks left in the mission
                 CurrentTaskInd++;
-            }
-            else
+            } else
             {
                 // no tasks left in the mission
                 if ((currentProject.Type != ProjectType.GROUNDSTATION_EXTERNAL) && (currentProject.Type != ProjectType.INTERNAL_REQUESTS))
@@ -1499,8 +1493,7 @@ namespace ManagerGUI
                     // to enable good sensors data for all camera frames.
                     // currently we keep it at 6 samples per second.
                     SqlHelper.AddSensorsTask(GetID(), "SETTINGS", cameraCaptureSensorsSampleRate);
-                }
-                else if (cmd == "Stop")
+                } else if (cmd == "Stop")
                 {
                     // change the sensors module sample rate to a lower value
                     // to a normal, low value (for the HBs).
@@ -1676,7 +1669,7 @@ namespace ManagerGUI
         /// <param name="Msg">the message</param>
         public void Tracking(string function, string Msg)
         {
-            //logger.Tracking(function, Msg);
+            logger.Tracking(function, Msg);
         }
 
         /// <summary>
@@ -1687,7 +1680,7 @@ namespace ManagerGUI
         /// <param name="e">an exception, if one happened</param>
         public void Error(string function, string msg, Exception e = null)
         {
-            //logger.Error(function, msg, e);
+            logger.Error(function, msg, e);
         }
 
         #endregion
