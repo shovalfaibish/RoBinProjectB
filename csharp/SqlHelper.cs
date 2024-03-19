@@ -844,10 +844,10 @@ namespace ManagerGUI.Utility
 
         public static bool AddRequestDbDone(int statusNumber, string dbPath)
         {
-            string Updatemodulejobs = "UPDATE modulejobs " +
+            string UpdateModulejobs = "UPDATE modulejobs " +
                           $"SET ManagerStatus={statusNumber} " +
                           "Where Module='Communication'";
-            string Insertcommunicationin = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
+            string InsertCommunicationIn = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                 $"Values ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'REQUEST_DB', '{dbPath}', '', 'NEW')";
 
             try
@@ -855,11 +855,11 @@ namespace ManagerGUI.Utility
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand command = new MySqlCommand(Insertcommunicationin, connection))
+                    using (MySqlCommand command = new MySqlCommand(InsertCommunicationIn, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    using (MySqlCommand command = new MySqlCommand(Updatemodulejobs, connection))
+                    using (MySqlCommand command = new MySqlCommand(UpdateModuleJobs, connection))
                     {
                         command.ExecuteNonQuery();
                     }
@@ -886,10 +886,10 @@ namespace ManagerGUI.Utility
 
         public static bool AddSettingsChanged(int statusNumber, string module)
         {
-            string Updatemodulejobs = "UPDATE modulejobs " +
+            string UpdateModuleJobs = "UPDATE modulejobs " +
                           $"SET ManagerStatus={statusNumber} " +
                           "Where Module='Communication'";
-            string Insertcommunicationin = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
+            string InsertCommunicationIn = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                 $"Values ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'SETTINGS', '', '{module}', 'NEW')";
 
             try
@@ -898,11 +898,11 @@ namespace ManagerGUI.Utility
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand command = new MySqlCommand(Insertcommunicationin, connection))
+                    using (MySqlCommand command = new MySqlCommand(InsertCommunicationIn, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    using (MySqlCommand command = new MySqlCommand(Updatemodulejobs, connection))
+                    using (MySqlCommand command = new MySqlCommand(UpdateModuleJobs, connection))
                     {
                         command.ExecuteNonQuery();
                     }
@@ -929,10 +929,10 @@ namespace ManagerGUI.Utility
 
         public static bool AddExternalPacketDone(int statusNumber)
         {
-            string Updatemodulejobs = "UPDATE modulejobs " +
+            string UpdateModuleJobs = "UPDATE modulejobs " +
                           $"SET ManagerStatus={statusNumber} " +
                           "Where Module='Communication'";
-            string Insertcommunicationin = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
+            string InsertCommunicationIn = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                 $"Values ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'EXTERNAL_PACKET', '', '', 'NEW')";
 
             try
@@ -940,11 +940,11 @@ namespace ManagerGUI.Utility
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand command = new MySqlCommand(Insertcommunicationin, connection))
+                    using (MySqlCommand command = new MySqlCommand(InsertCommunicationIn, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    using (MySqlCommand command = new MySqlCommand(Updatemodulejobs, connection))
+                    using (MySqlCommand command = new MySqlCommand(UpdateModuleJobs, connection))
                     {
                         command.ExecuteNonQuery();
                     }
@@ -971,10 +971,10 @@ namespace ManagerGUI.Utility
 
         public static bool AddSoftResetDone(int statusNumber)
         {
-            string Updatemodulejobs = "UPDATE modulejobs " +
+            string UpdateModuleJobs = "UPDATE modulejobs " +
                           $"SET ManagerStatus={statusNumber} " +
                           "Where Module='Communication'";
-            string Insertcommunicationin = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
+            string InsertCommunicationIn = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
                 $"Values ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'SOFT_RESET', '', '', 'NEW')";
 
             try
@@ -982,11 +982,11 @@ namespace ManagerGUI.Utility
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
                 {
                     connection.Open();
-                    using (MySqlCommand command = new MySqlCommand(Insertcommunicationin, connection))
+                    using (MySqlCommand command = new MySqlCommand(InsertCommunicationIn, connection))
                     {
                         command.ExecuteNonQuery();
                     }
-                    using (MySqlCommand command = new MySqlCommand(Updatemodulejobs, connection))
+                    using (MySqlCommand command = new MySqlCommand(UpdateModuleJobs, connection))
                     {
                         command.ExecuteNonQuery();
                     }
