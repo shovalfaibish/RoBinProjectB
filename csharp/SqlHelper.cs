@@ -181,7 +181,7 @@ namespace ManagerGUI.Utility
             List<string> lines = new List<string>();
             string selectAllModuleStatus = "SELECT * " +
                                           $"FROM modulejobs ";// +
-                                          //"WHERE Module != 'Communication'";
+                                                              //"WHERE Module != 'Communication'";
 
             try
             {
@@ -409,7 +409,7 @@ namespace ManagerGUI.Utility
             string updateModuleJobRow = "UPDATE modulejobs " +
                                        $"SET ManagerStatus=1 " +
                                        $"WHERE Module='{ModuleName}'";
-            string updateTasksRows =  $"UPDATE {TasksTable} " +
+            string updateTasksRows = $"UPDATE {TasksTable} " +
                                       $"SET Status='CANCELED' " +
                                       $"WHERE Status='NEW' OR Status='RUNNING'";
             try
@@ -554,7 +554,7 @@ namespace ManagerGUI.Utility
             return true;
         }
 
-        public static bool AddCameraTask(string TaskID, string type, int value, string saveLocally, string resolution, bool internalCamera=false)
+        public static bool AddCameraTask(string TaskID, string type, int value, string saveLocally, string resolution, bool internalCamera = false)
         {
             List<string> lines = new List<string>();
             // Add task to driver and THEN update moduleJobs (to avoid driver not finding the task)
@@ -564,7 +564,7 @@ namespace ManagerGUI.Utility
                      $"VALUES ({DateTimeOffset.Now.ToUnixTimeMilliseconds()}, 'SEND_IMG', '', '{type},{saveLocally},{resolution}', 'NEW')";
 
             string updateModuleJobRow = "UPDATE modulejobs " +
-                                        "SET ManagerStatus=1 " + 
+                                        "SET ManagerStatus=1 " +
                                         "WHERE Module='Camera'";
             if (!internalCamera)
             {
@@ -654,16 +654,16 @@ namespace ManagerGUI.Utility
             return true;
         }
 
-        public static bool AddNavigationTask(string TaskID, string type)
+        public static bool AddNavigationTask(string TaskID, string type, string saveOutput)
         {
             List<string> lines = new List<string>();
             // Add task to navigation and THEN update moduleJobs (to avoid navigation not finding the task)
-            string addNavigationTask = "INSERT INTO navigationtasks (TaskID, Command, Status) " +
-                                       $"VALUES ('{TaskID}', '{type}', 'NEW')";
+            string addNavigationTask = "INSERT INTO navigationtasks (TaskID, Command, SaveOutput, Status) " +
+                                       $"VALUES ('{TaskID}', '{type}', '{saveOutput}', 'NEW')";
 
             string updateModuleJobRow = "UPDATE modulejobs " +
-                                        $"SET ManagerStatus=1 " +
-                                        $"WHERE Module='Navigation'";
+                                        "SET ManagerStatus=1 " +
+                                        "WHERE Module='Navigation'";
             try
             {
                 using (MySqlConnection connection = new MySqlConnection(MySqlConnectionString))
