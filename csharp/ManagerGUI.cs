@@ -244,7 +244,8 @@ namespace ManagerGUI
                     try
                     {
                         ProjectHandler();
-                    } catch (Exception e)
+                    }
+                    catch (Exception e)
                     {
                         Error("ProjectHandler", "ProjectHandler crash", e);
                     }
@@ -536,7 +537,8 @@ namespace ManagerGUI
 
                             // log action
                             ManagerAction("NA", "Driver", "Calibrate", cmd, "NEW", "");
-                        } else if (type == "Crane")
+                        }
+                        else if (type == "Crane")
                         {
                             string relevantData = string.Join(",", dataElems.Skip(3));
 
@@ -983,7 +985,8 @@ namespace ManagerGUI
                 {
                     extTask = new DriverTask(dType, value, -1, taskStep);
                 }
-            } else if (type == "Crane")
+            }
+            else if (type == "Crane")
             {
                 if (!Enum.TryParse(cmd, out CraneTypes cType))
                 {
@@ -1148,14 +1151,16 @@ namespace ManagerGUI
                         // no mission/task started. start one.
                         StartNextTask();
                     }
-                } else
+                }
+                else
                 {
                     if (currentTask == null)
                     {
                         // there is a project/mission, but no task.
                         // it probably ended, select a new one.
                         StartNextTask();
-                    } else
+                    }
+                    else
                     {
                         // special case. 
                         // (1) if we're running an endless external task, and 
@@ -1301,7 +1306,8 @@ namespace ManagerGUI
             {
                 // we still have tasks left in the mission
                 CurrentTaskInd++;
-            } else
+            }
+            else
             {
                 // no tasks left in the mission
                 if ((currentProject.Type != ProjectType.GROUNDSTATION_EXTERNAL) && (currentProject.Type != ProjectType.INTERNAL_REQUESTS))
@@ -1493,7 +1499,8 @@ namespace ManagerGUI
                     // to enable good sensors data for all camera frames.
                     // currently we keep it at 6 samples per second.
                     SqlHelper.AddSensorsTask(GetID(), "SETTINGS", cameraCaptureSensorsSampleRate);
-                } else if (cmd == "Stop")
+                }
+                else if (cmd == "Stop")
                 {
                     // change the sensors module sample rate to a lower value
                     // to a normal, low value (for the HBs).
@@ -1509,6 +1516,7 @@ namespace ManagerGUI
             }
             else if (cmdType == "Navigation")
             {
+                string saveOutput = dataElem[4];
                 // add navigation task
                 if (cmd == "Start")
                 {
@@ -1519,7 +1527,7 @@ namespace ManagerGUI
                     // TODO: STOP CAMERA, WAIT FOR ALL REQUSTS TO BE DONE SHOVAL
                     StopCurrenProject(); // Stop navigation requests to driver
                 }
-                bool sqlRes = SqlHelper.AddNavigationTask(TaskID, cmd);
+                bool sqlRes = SqlHelper.AddNavigationTask(TaskID, cmd, saveOutput);
                 if (sqlRes == false) return; //TODO return or retry? debate this later.
 
                 // TODO special Logger functions for commands, projects, etc?
