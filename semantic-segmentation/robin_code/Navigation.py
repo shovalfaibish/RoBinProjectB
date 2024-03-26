@@ -34,11 +34,12 @@ def look_for_tasks():
         nav.write_log("Started look_for_tasks thread and connected to DB.")
 
         # DELETE EVENTUALLY
-        tasks_cursor.execute("delete from navigationrequests where Status='RUNNING' or Status='DONE'")
-        tasks_cursor.execute("delete from navigationtasks where Status = 'RUNNING' or Status = 'NEW'")
-        tasks_cursor.execute("delete from communicationin where Status = 'DONE'")
+        tasks_cursor.execute("delete from navigationrequests")
+        tasks_cursor.execute("delete from drivertasks")
+        tasks_cursor.execute("delete from navigationtasks")
+        tasks_cursor.execute("delete from communicationin")
         dtime = datetime.now().strftime("%d%m%y_%H%M%S%f")
-        tasks_cursor.execute(f"insert into communicationin (TimeStamp, Type, Data, Status) values ('1', 'MANUAL', '2,{dtime},Navigation,Start', 'NEW')")
+        tasks_cursor.execute(f"insert into communicationin (TimeStamp, Type, Data, Status) values ('1', 'MANUAL', '2,{dtime},Navigation,Start,true', 'NEW')")
         tasks_cursor.execute("update modulejobs set ModuleStatus=1 where Module='Communication'")
         t_database.commit()
 
@@ -53,17 +54,18 @@ def look_for_tasks():
                     manager_status = ManagerStatus
                     if manager_status == 1:
                         # New tasks are in the NavigationTasks table
-                        tasks_cursor.execute("SELECT TaskID, Command "
+                        tasks_cursor.execute("SELECT TaskID, Command, SaveOutput "
                                              "FROM navigationtasks "
                                              "WHERE Status='NEW'")
                         result = tasks_cursor.fetchall()
 
                         # Iterate new tasks
                         if len(result) > 0:
-                            for (TaskID, Command) in result:
+                            for (TaskID, Command, SaveOutput) in result:
                                 if Command == "Start":
                                     # TODO: START CAMERa start_internal using request
-                                    nav.start()
+                                    save_output = bool(SaveOutput)
+                                    nav.start(save_output)
 
                                     # Set Start Navigation task to RUNNING
                                     nav.start_task_id = TaskID
