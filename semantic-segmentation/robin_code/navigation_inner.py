@@ -80,29 +80,26 @@ class Navigation:
         self.r_database.commit()
 
         self.write_log(f"Sent request {self.request_task_id} Values: {data}")
-        self.request_i += 2
+        self.request_i += 1
 
-        # Wait for request status DONE
-        self._wait_for_request_done()
-
-    def _get_request_status(self):
+    def _get_request_status(self, request_task_id):
         if self.__stop_thread:
             return None
 
         self.r_database.commit()
         self.requests_cursor.execute("SELECT Status "
                                      "FROM navigationrequests "
-                                     f"WHERE TaskID='{self.request_task_id}'")
+                                     f"WHERE TaskID='{request_task_id}'")
         result = self.requests_cursor.fetchone()
         return result[0] if result else None
 
-    def _wait_for_request_done(self):
+    def _wait_for_request_done(self, request_task_id):
         while not self.__stop_thread:
-            status = self._get_request_status()
+            status = self._get_request_status(request_task_id)
             if status is None:  # Error
                 raise "Error in function '_wait_for_request_done': caught Status=None"
             if status == "DONE":
-                self.write_log(f"Request {self.request_task_id} DONE.")
+                self.write_log(f"Request {request_task_id} DONE.")
                 break
             time.sleep(1)
 
@@ -116,12 +113,23 @@ class Navigation:
         degrees = int(degrees * const.DEGREES_FIX)
         if abs(degrees) < const.DEGREES_THRESHOLD:
             self.write_log(f"No adjustment: {abs(degrees)} degrees is below threshold")
+            return
 
+        # Turn right or left
         if degrees > 0:
             self._send_request_to_module(self._create_driver_request("Right", degrees, 40))
 
         else:
             self._send_request_to_module(self._create_driver_request("Left", -degrees, 40))
+
+        # Save turn request task id
+        turn_request_task_id = self.request_task_id
+
+        # Infinity forward
+        self._send_request_to_module(self._create_driver_request("Forward", -1, -1))
+
+        # Wait for turn request status DONE
+        self._wait_for_request_done(turn_request_task_id)
 
     def _adjust_direction_by_centroid(self, centroid_x, centroid_y):
         # Calculate image center x value
@@ -180,4 +188,5 @@ class Navigation:
                 h.delete_dir(f"{const.LOCAL_CAMERA_OUTPUT_PATH}_temp")
 
             if self.__save_output:
-                h.create_output_video(timestamp)
+                # h.create_output_video(timestamp)
+                pass
