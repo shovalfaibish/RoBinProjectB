@@ -844,7 +844,7 @@ namespace ManagerGUI.Utility
 
         public static bool AddRequestDbDone(int statusNumber, string dbPath)
         {
-            string UpdateModulejobs = "UPDATE modulejobs " +
+            string UpdateModuleJobs = "UPDATE modulejobs " +
                           $"SET ManagerStatus={statusNumber} " +
                           "Where Module='Communication'";
             string InsertCommunicationIn = "INSERT INTO communicationout (TimeStamp, Type, FilePath, Data, Status) " +
