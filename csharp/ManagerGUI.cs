@@ -135,10 +135,10 @@ namespace ManagerGUI
             {
                 // the log folder was created, create the comm log 
                 LogFilePath = latestLogDir + "/Manager_Logs.txt";
-                //logger.SetLogFilePath(LogFilePath);
+                logger.SetLogFilePath(LogFilePath);
             }
-            //logger.StartSetup(simulation);
-            //logger.ReportLogPath();
+            logger.StartSetup(simulation);
+            logger.ReportLogPath();
         }
 
         /// <summary>
@@ -1663,7 +1663,7 @@ namespace ManagerGUI
         /// <param name="Msg">the message</param>
         public void Tracking(string function, string Msg)
         {
-            //logger.Tracking(function, Msg);
+            logger.Tracking(function, Msg);
         }
 
         /// <summary>
@@ -1674,7 +1674,7 @@ namespace ManagerGUI
         /// <param name="e">an exception, if one happened</param>
         public void Error(string function, string msg, Exception e = null)
         {
-            //logger.Error(function, msg, e);
+            logger.Error(function, msg, e);
         }
 
         #endregion
