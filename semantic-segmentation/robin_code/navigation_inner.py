@@ -18,6 +18,7 @@ class Navigation:
     """
 
     def __init__(self, lab_exp=False):
+        self.__save_output = False
         self.__stop_thread = False
         self.__nav_th = None
         self.__lab_exp = lab_exp
@@ -132,8 +133,9 @@ class Navigation:
 
         self._turn(angle_degrees)
 
-    def start(self):
+    def start(self, save_output):
         self.write_log("Started navigation process.")
+        self.__save_output = save_output
         self.__stop_thread = False
         self.project_id = datetime.now().strftime("%d%m%y_%H%M%S%f")
         self.__nav_th = threading.Thread(target=self.navigate, name="Nav_th")
@@ -151,8 +153,9 @@ class Navigation:
 
         # Start semantic segmentation
         timestamp = datetime.now().strftime("%d-%m_%H:%M:%S")
-        h.setup_output_folders(timestamp)
-        self.__semseg.start(timestamp)
+        if self.__save_output:
+            h.setup_output_folders(timestamp)
+        self.__semseg.start(timestamp, self.__save_output)
 
         try:
             # Wait for segmentation results
@@ -161,7 +164,7 @@ class Navigation:
 
             while not self.__stop_thread:
                 # Calculate center of mass and adjust direction based on segmentation
-                centroid = h.calculate_center_of_mass(self.__semseg.get_seg_result())
+                centroid = h.calculate_center_of_mass(self.__semseg.get_seg_result(), self.__save_output)
                 if centroid:
                     self._adjust_direction_by_centroid(*centroid)
                 time.sleep(2)  # Allow RoBin to move forward between turns
@@ -175,4 +178,6 @@ class Navigation:
 
             if self.__lab_exp:
                 h.delete_dir(f"{const.LOCAL_CAMERA_OUTPUT_PATH}_temp")
-            # TODO: AUTOMATICALLY CREATE VIDEO?
+
+            if self.__save_output:
+                h.create_output_video(timestamp)
