@@ -135,10 +135,10 @@ namespace ManagerGUI
             {
                 // the log folder was created, create the comm log 
                 LogFilePath = latestLogDir + "/Manager_Logs.txt";
-                logger.SetLogFilePath(LogFilePath);
+                //logger.SetLogFilePath(LogFilePath);
             }
-            logger.StartSetup(simulation);
-            logger.ReportLogPath();
+            //logger.StartSetup(simulation);
+            //logger.ReportLogPath();
         }
 
         /// <summary>
@@ -502,7 +502,7 @@ namespace ManagerGUI
                             if (cmd == "Stop")
                             {
                                 // TODO change taskID to something meaningful
-                                bool sqlRes = SqlHelper.AddNavigationTask("1", cmd);
+                                bool sqlRes = SqlHelper.AddNavigationTask("1", cmd, "false");
 
                                 // TODO special Logger functions for commands, projects, etc?
                                 ManagerAction("1", "Navigation", "Internal", cmd, "NEW", $"Self-initiated navigation stop");
@@ -1084,10 +1084,6 @@ namespace ManagerGUI
                 if (currentProject.Missions.Count == 1)
                 {
                     currentProject.Missions[0].AddTask(reqTask);
-                    if (type == "Driver")
-                    {
-                        currentProject.Missions[0].AddTask(new DriverTask(DriverTypes.Forward, -1, -1, taskStep + 1)); // Infinity forward
-                    }
                 }
                 else
                 {
@@ -1104,10 +1100,6 @@ namespace ManagerGUI
                 // TODO robin name and ground name                
                 Mission reqMission = new Mission(1, "Internal_Request_Mission", new List<MissionTask>());
                 reqMission.AddTask(reqTask);
-                if (type == "Driver")
-                {
-                    reqMission.AddTask(new DriverTask(DriverTypes.Forward, -1, -1, taskStep + 1)); // Infinity forward
-                }
 
                 currentProject = new Project(ProjectID, ProjectType.INTERNAL_REQUESTS, -1,
                     "", "", new List<Mission>() { reqMission });
@@ -1118,12 +1110,6 @@ namespace ManagerGUI
 
             // Update request status to RUNNING
             SqlHelper.UpdateRequestStatus(module, TaskID, "RUNNING");
-
-            if (type == "Driver")
-            {
-                string forwardTaskID = GetTaskID(currentProject.ProjectID, 1, taskStep + 1);
-                ManagerAction(forwardTaskID, type, "Internal Request", "Forward", "NEW", $"Dist:infinity");
-            }
         }
 
         /// <summary>
@@ -1677,7 +1663,7 @@ namespace ManagerGUI
         /// <param name="Msg">the message</param>
         public void Tracking(string function, string Msg)
         {
-            logger.Tracking(function, Msg);
+            //logger.Tracking(function, Msg);
         }
 
         /// <summary>
@@ -1688,7 +1674,7 @@ namespace ManagerGUI
         /// <param name="e">an exception, if one happened</param>
         public void Error(string function, string msg, Exception e = null)
         {
-            logger.Error(function, msg, e);
+            //logger.Error(function, msg, e);
         }
 
         #endregion
