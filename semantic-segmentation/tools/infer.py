@@ -27,6 +27,7 @@ class SemSeg:
         self.logfile = os.path.join(Path.home(), "RoBin_Files/Logs/Latest/Semseg_Logs.txt")
         self.semseg_th = None
         self.lab_exp = lab_exp
+        self.save_output = None
 
         self._initialize_from_config(cfg_file)
         self._initialize_preprocessing()
@@ -62,7 +63,7 @@ class SemSeg:
         self.save_dir = Path(self.cfg['SAVE_DIR'])
         self.save_dir.mkdir(exist_ok=True)
 
-    def _initialize_state(self, timestamp) -> None:
+    def _initialize_state(self, timestamp, save_output) -> None:
         self.alpha = 0.25
         self.seq_pred = None  # Sequential prediction
         self.seg_result = None
@@ -70,6 +71,7 @@ class SemSeg:
         self.result_lock = threading.Lock()
         self.stop_thread = False
         self.timestamp = timestamp
+        self.save_output = save_output
 
     def _write_log(self, msg):
         # Write to file and flush to stdout
@@ -111,14 +113,12 @@ class SemSeg:
 
         # Convert segmentation map to color map
         seg_image = self.palette[seg_map].squeeze()
-        # if self.overlay:
-        #     seg_image = (orig_img.permute(1, 2, 0) * 0.4) + (seg_image * 0.6)
 
         # Save segmentation result
         with self.result_lock:
             self.seg_result = draw_text(seg_image, seg_map, self.labels)
             self.curr_filename = img_fname.stem
-            if self.timestamp != -1:
+            if self.timestamp != -1 and self.save_output:
                 self.seg_result.save(self.save_dir / f"{self.timestamp}/semseg/{str(img_fname.stem)}.jpg")
 
     @torch.inference_mode()
@@ -131,7 +131,8 @@ class SemSeg:
         image = read_image(str(img_fname))
         image = T.Resize((int(image.shape[1] * 0.1), int(image.shape[2] * 0.1)))(image)
         if self.timestamp != -1:
-            TF.to_pil_image(image).save(self.save_dir / f"{self.timestamp}/camera/{str(img_fname.stem)}.jpg")
+            if self.save_output:
+                TF.to_pil_image(image).save(self.save_dir / f"{self.timestamp}/camera/{str(img_fname.stem)}.jpg")
 
             # if self.lab_exp:
             #     os.remove(img_fname)
@@ -166,9 +167,9 @@ class SemSeg:
         with self.result_lock:
             return [self.seg_result, self.curr_filename]
 
-    def start(self, timestamp):
+    def start(self, timestamp, save_output):
         self._write_log("Started semantic segmentation process.")
-        self._initialize_state(timestamp)
+        self._initialize_state(timestamp, save_output)
         self.semseg_th = threading.Thread(target=self._perform_semantic_segmentation, name="Semseg_th")
         self.semseg_th.start()
 
