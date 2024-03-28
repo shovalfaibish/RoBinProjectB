@@ -10,7 +10,7 @@ import shutil
 ##############################
 
 
-aruco_detector = cv2.aruco.ArucoDetector(const.ARUCO_DICT, const.ARUCO_PARAMS)
+# aruco_detector = cv2.aruco.ArucoDetector(const.ARUCO_DICT, const.ARUCO_PARAMS)
 timestamp = None
 
 
@@ -58,7 +58,7 @@ def create_binary_mask(image_info):
 
 
 # Calculate center of mass from binary mask
-def calculate_center_of_mass(image_info):
+def calculate_center_of_mass(image_info, save_output):
     binary_mask = create_binary_mask(image_info)
 
     # Calculate arrow starting position (bottom center)
@@ -80,15 +80,17 @@ def calculate_center_of_mass(image_info):
 
         # Save output
         # Draw an arrow from the bottom center to the specified coordinate
-        arrow_image = binary_mask.copy()
-        arrow_image = cv2.arrowedLine(arrow_image, (start_x, start_y), (x, y), (150, 150, 150), 2)
-        cv2.imwrite(f"output/{timestamp}/{const.OUTPUT_FOLDERS[2]}/{image_info[1]}.jpg", arrow_image)
+        if save_output:
+            arrow_image = binary_mask.copy()
+            arrow_image = cv2.arrowedLine(arrow_image, (start_x, start_y), (x, y), (150, 150, 150), 2)
+            cv2.imwrite(f"output/{timestamp}/{const.OUTPUT_FOLDERS[2]}/{image_info[1]}.jpg", arrow_image)
 
         return x, y
 
     else:
         print("No centroid found.")
-        cv2.imwrite(f"output/{timestamp}/{const.OUTPUT_FOLDERS[2]}/{image_info[1]}.jpg", const.BLACK_IMAGE)
+        if save_output:
+            cv2.imwrite(f"output/{timestamp}/{const.OUTPUT_FOLDERS[2]}/{image_info[1]}.jpg", const.BLACK_IMAGE)
         return None
 
 
@@ -98,27 +100,18 @@ def calculate_center_of_mass(image_info):
 
 
 # ArUco Mark Detection
-def detect_aruco():
-    image = cv2.imread(gs.frame(), cv2.IMREAD_COLOR)
-    (corners, ids, _) = aruco_detector.detectMarkers(image)
-
-    if ids is not None:
-        print("ArUco markers detected:")
-        for i in range(len(ids)):
-            print(f"Marker ID: {ids[i]}, Corner Coordinates: {corners[i]}")
-        return True
-    else:
-        print("No ArUco markers detected.")
-        return False
-
+# def detect_aruco():
+#     image = cv2.imread(gs.frame(), cv2.IMREAD_COLOR)
+#     (corners, ids, _) = aruco_detector.detectMarkers(image)
 #
-# # Parse arguments
-# def parse_args():
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('--disable_aruco', action='store_true', help='Disable AruCo.')
-#     parser.add_argument('--lab_exp', action='store_true', help='Enable lab experiment. Adjust LOCAL_CAMERA_OUTPUT_PATH')
-#     parser.add_argument('--save_output', action='store_true', help='Save output for video.')
-#     return parser.parse_args()
+#     if ids is not None:
+#         print("ArUco markers detected:")
+#         for i in range(len(ids)):
+#             print(f"Marker ID: {ids[i]}, Corner Coordinates: {corners[i]}")
+#         return True
+#     else:
+#         print("No ArUco markers detected.")
+#         return False
 
 
 # Create side by side video of camera-semseg-binary
