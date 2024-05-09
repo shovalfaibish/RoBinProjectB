@@ -65,6 +65,13 @@ class Navigation:
             data += f",{cmd_quadrant},{cmd_radius}"
         return data
 
+    @staticmethod
+    def _create_camera_request(cmd):
+        if cmd == "Start":
+            return f"Camera,{cmd},0,True,False"
+        if cmd == "Stop":
+            return f"Camera,{cmd},-1,False,False"
+
     def _send_request_to_module(self, data):
         self.request_task_id = str(self.project_id) + ".1." + str(self.request_i)
 
@@ -146,6 +153,7 @@ class Navigation:
         self.__save_output = save_output
         self.__stop_thread = False
         self.project_id = datetime.now().strftime("%d%m%y_%H%M%S%f")
+        self._send_request_to_module(self._create_camera_request("Start"))
         self.__nav_th = threading.Thread(target=self.navigate, name="Nav_th")
         self.__nav_th.start()
 
@@ -153,6 +161,7 @@ class Navigation:
         self.write_log("Stopped navigation process.")
         self.__stop_thread = True
         self._terminate_all_requests()
+        self._send_request_to_module(self._create_camera_request("Stop"))
 
     def navigate(self):
         if self.__lab_exp:
