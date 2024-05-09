@@ -685,7 +685,9 @@ namespace ManagerGUI
                 if (currentProject != null && currentMission != null && currentTask != null)
                 {
                     string TaskID = GetTaskID(currentProject.ProjectID, currentMission.MissionStep, currentTask.TaskStep);
+                    Console.WriteLine(TaskID);
                     string TaskStatus = SqlHelper.GetModuleTaskStatus("driver", TaskID);
+                    Console.WriteLine(currentMission.tasks.Count);
                     if (TaskStatus == null) return false; //TODO continue or break? debate this later.
 
                     if (!Enum.TryParse(TaskStatus, out ProjectStatus status)) return false;
@@ -1052,8 +1054,36 @@ namespace ManagerGUI
             string type = dataElems[0];
             string cmd = dataElems[1];
             int value = Convert.ToInt32(dataElems[2]);
-            MissionTask reqTask;
-            if (type == "Driver")
+            MissionTask reqTask = null;
+
+            if (type == "Camera")
+            {
+                if (cmd == "Start")
+                {/*
+                    // delete the images folder content, the user doesnt need them.
+                    // This is nessecary to make sure Camera module operates properly
+                    // (this cleanup can clean leftovers of a "crash", for example).
+                    foreach (string dir in Directory.GetDirectories(robinFolder + "/Images/"))
+                    {
+                        Directory.Delete(dir, true);
+                    }
+                    foreach (string file in Directory.GetFiles(robinFolder + "/Images/"))
+                    {
+                        File.Delete(file);
+                    }
+                    */
+                    CurrentCameraTaskID = TaskID;
+                }
+                if (cmd == "Stop" && module == "navigation")
+                {
+                    StopCurrenProject(); // Stop navigation requests to driver
+                }
+
+                bool sqlRes = SqlHelper.AddCameraTask(TaskID, cmd, value, dataElems[3], dataElems[4], true);
+                if (sqlRes == false) return; //TODO return or retry? debate this later.
+            }
+
+            else if (type == "Driver")
             {
                 if (!Enum.TryParse(cmd, out DriverTypes dType))
                 {
@@ -1077,39 +1107,49 @@ namespace ManagerGUI
                 return;
             }
 
-            // Add the task to an existing or new internal request project
-            if (currentProject != null && currentProject.ProjectID == ProjectID)
+            if (type != "Camera")
             {
-                // same internal request project. add the data as a task to it.
-                if (currentProject.Missions.Count == 1)
+                // Add the task to an existing or new internal request project
+                if (currentProject != null && currentProject.ProjectID == ProjectID)
                 {
-                    currentProject.Missions[0].AddTask(reqTask);
+                    // same internal request project. add the data as a task to it.
+                    if (currentProject.Missions.Count == 1)
+                    {
+                        currentProject.Missions[0].AddTask(reqTask);
+                    }
+                    else
+                    {
+                        // TODO this shouldnt happen
+                    }
                 }
                 else
                 {
-                    // TODO this shouldnt happen
+                    // the internal request project is new.
+                    // stop the current project, if one exists
+                    StopCurrenProject();
+
+                    // Start a new project
+                    // TODO robin name and ground name                
+                    Mission reqMission = new Mission(1, "Internal_Request_Mission", new List<MissionTask>());
+                    reqMission.AddTask(reqTask);
+
+                    currentProject = new Project(ProjectID, ProjectType.INTERNAL_REQUESTS, -1,
+                        "", "", new List<Mission>() { reqMission });
+                    currentMission = null;
+                    currentTask = null;
                 }
-            }
-            else
-            {
-                // the internal request project is new.
-                // stop the current project, if one exists
-                StopCurrenProject();
-
-                // Start a new project
-                // TODO robin name and ground name                
-                Mission reqMission = new Mission(1, "Internal_Request_Mission", new List<MissionTask>());
-                reqMission.AddTask(reqTask);
-
-                currentProject = new Project(ProjectID, ProjectType.INTERNAL_REQUESTS, -1,
-                    "", "", new List<Mission>() { reqMission });
-                currentMission = null;
-                currentTask = null;
             }
             ManagerAction(TaskID, type, "Internal Request", cmd, "NEW", $"Dist:{value}");
 
-            // Update request status to RUNNING
-            SqlHelper.UpdateRequestStatus(module, TaskID, "RUNNING");
+            // Update request status
+            if (type == "Camera")
+            {
+                SqlHelper.UpdateRequestStatus(module, TaskID, "DONE");
+            }
+            else
+            {
+                SqlHelper.UpdateRequestStatus(module, TaskID, "RUNNING");
+            }
         }
 
         /// <summary>
@@ -1507,11 +1547,6 @@ namespace ManagerGUI
                 if (cmd == "Start")
                 {
                     CurrentNavigationTaskID = TaskID;
-                }
-                if (cmd == "Stop")
-                {
-                    // TODO: STOP CAMERA, WAIT FOR ALL REQUSTS TO BE DONE SHOVAL
-                    StopCurrenProject(); // Stop navigation requests to driver
                 }
                 bool sqlRes = SqlHelper.AddNavigationTask(TaskID, cmd, saveOutput);
                 if (sqlRes == false) return; //TODO return or retry? debate this later.
