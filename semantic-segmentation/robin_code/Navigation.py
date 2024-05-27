@@ -63,7 +63,6 @@ def look_for_tasks():
                         if len(result) > 0:
                             for (TaskID, Command, SaveOutput) in result:
                                 if Command == "Start":
-                                    # TODO: START CAMERa start_internal using request
                                     save_output = bool(SaveOutput)
                                     nav.start(save_output)
 
@@ -74,7 +73,6 @@ def look_for_tasks():
                                                          f"WHERE TaskID='{TaskID}'")
 
                                 elif Command == "Stop":
-                                    # TODO: STOP CAMERA?? wait for it to signal done, then continue
                                     nav.stop()
                                     # Set Start Navigation and Stop Navigation tasks to DONE
                                     tasks_cursor.execute("UPDATE navigationtasks "
