@@ -685,9 +685,7 @@ namespace ManagerGUI
                 if (currentProject != null && currentMission != null && currentTask != null)
                 {
                     string TaskID = GetTaskID(currentProject.ProjectID, currentMission.MissionStep, currentTask.TaskStep);
-                    Console.WriteLine(TaskID);
                     string TaskStatus = SqlHelper.GetModuleTaskStatus("driver", TaskID);
-                    Console.WriteLine(currentMission.tasks.Count);
                     if (TaskStatus == null) return false; //TODO continue or break? debate this later.
 
                     if (!Enum.TryParse(TaskStatus, out ProjectStatus status)) return false;
@@ -900,8 +898,6 @@ namespace ManagerGUI
                         CurrentNavigationTaskID = null;
                         // log action
                         ManagerAction("NA", "Navigation", "Manual", "Navigate", "DONE", "");
-
-                        return true;
                     }
                 }
 
