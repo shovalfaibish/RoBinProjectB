@@ -153,12 +153,18 @@ class Navigation:
         self.__save_output = save_output
         self.__stop_thread = False
         self.project_id = datetime.now().strftime("%d%m%y_%H%M%S%f")
+
+        # Send request to start camera, and start navigation thread
         self._send_request_to_module(self._create_camera_request("Start"))
+        self._wait_for_request_done(self.request_task_id)
+
         self.__nav_th = threading.Thread(target=self.navigate, name="Nav_th")
         self.__nav_th.start()
 
     def stop(self):
         self.write_log("Stopped navigation process.")
+
+        # Stop navigation thread, terminate requests, and send request to stop camera
         self.__stop_thread = True
         self._terminate_all_requests()
         self._send_request_to_module(self._create_camera_request("Stop"))
