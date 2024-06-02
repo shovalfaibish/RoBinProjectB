@@ -41,6 +41,7 @@ BLACK_IMAGE = np.zeros((IMG_HEIGHT, IMG_WIDTH, 3), np.uint8)
 ##############################
 
 
-TIME_PAUSE = 3
+TIME_PAUSE = 0.5
 DEGREES_THRESHOLD = 4
 DEGREES_FIX = 0.48 * 0.9
+
