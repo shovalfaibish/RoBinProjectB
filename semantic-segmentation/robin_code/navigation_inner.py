@@ -68,7 +68,7 @@ class Navigation:
     @staticmethod
     def _create_camera_request(cmd):
         if cmd == "Start":
-            return f"Camera,{cmd},0,True,False"
+            return f"Camera,{cmd},0,True,1280x720"
         if cmd == "Stop":
             return f"Camera,{cmd},-1,False,False"
 
@@ -120,6 +120,9 @@ class Navigation:
         degrees = int(degrees * const.DEGREES_FIX)
         if abs(degrees) < const.DEGREES_THRESHOLD:
             self.write_log(f"No adjustment: {abs(degrees)} degrees is below threshold")
+            if self.request_i <= 2:
+                # Infinity forward
+                self._send_request_to_module(self._create_driver_request("Forward", -1, -1))
             return
 
         # Turn right or left
@@ -155,8 +158,9 @@ class Navigation:
         self.project_id = datetime.now().strftime("%d%m%y_%H%M%S%f")
 
         # Send request to start camera, and start navigation thread
-        self._send_request_to_module(self._create_camera_request("Start"))
-        self._wait_for_request_done(self.request_task_id)
+        if not self.__lab_exp:
+            self._send_request_to_module(self._create_camera_request("Start"))
+            self._wait_for_request_done(self.request_task_id)
 
         self.__nav_th = threading.Thread(target=self.navigate, name="Nav_th")
         self.__nav_th.start()
@@ -167,7 +171,8 @@ class Navigation:
         # Stop navigation thread, terminate requests, and send request to stop camera
         self.__stop_thread = True
         self._terminate_all_requests()
-        self._send_request_to_module(self._create_camera_request("Stop"))
+        if not self.__lab_exp:
+            self._send_request_to_module(self._create_camera_request("Stop"))
 
     def navigate(self):
         if self.__lab_exp:
@@ -190,7 +195,7 @@ class Navigation:
                 centroid = h.calculate_center_of_mass(self.__semseg.get_seg_result(), self.__save_output)
                 if centroid:
                     self._adjust_direction_by_centroid(*centroid)
-                time.sleep(2)  # Allow RoBin to move forward between turns
+                time.sleep(0.5)  # Allow RoBin to move forward between turns
 
         except Exception as e:
             self.write_log("Error in function 'navigate': " + str(e))
