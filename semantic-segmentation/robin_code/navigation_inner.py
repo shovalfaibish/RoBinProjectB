@@ -108,7 +108,7 @@ class Navigation:
             if status == "DONE":
                 self.write_log(f"Request {request_task_id} DONE.")
                 break
-            time.sleep(1)
+            time.sleep(const.TIME_PAUSE)
 
     def _terminate_all_requests(self):
         self.requests_cursor.execute("UPDATE navigationrequests "
@@ -188,14 +188,14 @@ class Navigation:
         try:
             # Wait for segmentation results
             while not self.__stop_thread and self.__semseg.get_seg_result()[0] is None:
-                time.sleep(1)
+                time.sleep(const.TIME_PAUSE * 2)
 
             while not self.__stop_thread:
                 # Calculate center of mass and adjust direction based on segmentation
                 centroid = h.calculate_center_of_mass(self.__semseg.get_seg_result(), self.__save_output)
                 if centroid:
                     self._adjust_direction_by_centroid(*centroid)
-                time.sleep(0.5)  # Allow RoBin to move forward between turns
+                time.sleep(const.TIME_PAUSE)  # Allow RoBin to move forward between turns
 
         except Exception as e:
             self.write_log("Error in function 'navigate': " + str(e))
