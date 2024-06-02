@@ -3,6 +3,7 @@ import cv2
 import os
 import constants as const
 import shutil
+from pathlib import Path
 
 
 ##############################
@@ -107,11 +108,11 @@ def calculate_center_of_mass(image_info, save_output):
 
 # Create side by side video of camera-semseg-binary
 def create_output_video(folder=None):
-    print("Creating video...")
     if not folder:
         folder = timestamp
-    prefix = f"output/{folder}/"
-    filenames = sorted(os.listdir(f"{prefix}{const.OUTPUT_FOLDERS[0]}"))
+    prefix = f"{const.PREFIX}output/{folder}/"
+    sorted_files = sorted(Path(f"{prefix}{const.OUTPUT_FOLDERS[0]}").glob('*.*'), key=lambda f: os.path.getctime(f))
+    filenames = [file.name for file in sorted_files]
 
     # Create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
