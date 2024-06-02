@@ -208,5 +208,7 @@ class Navigation:
                 h.delete_dir(f"{const.LOCAL_CAMERA_OUTPUT_PATH}_temp")
 
             if self.__save_output:
-                # h.create_output_video(timestamp)
+                self.write_log("Creating output video...")
+                h.create_output_video(timestamp)
+                self.write_log("Finished creating output video.")
                 pass
