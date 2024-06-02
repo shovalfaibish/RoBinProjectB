@@ -10,7 +10,6 @@ import shutil
 ##############################
 
 
-# aruco_detector = cv2.aruco.ArucoDetector(const.ARUCO_DICT, const.ARUCO_PARAMS)
 timestamp = None
 
 
@@ -34,14 +33,21 @@ def backup_dir(src):
     shutil.copytree(src, dst)
 
 
+def delete_images_in_folder(path):
+    files = os.listdir(path)
+    for file in files:
+        if file.endswith('.jpg'):
+            os.remove(os.path.join(path, file))
+
+
 # Set up output folders
 def setup_output_folders(tstamp):
     global timestamp
     timestamp = tstamp
     print("Setting up output folders...")
-    os.makedirs(f"output/{timestamp}", exist_ok=True)
+    os.makedirs(f"{const.PREFIX}output/{timestamp}", exist_ok=True)
     for folder in const.OUTPUT_FOLDERS:
-        os.makedirs(f"output/{timestamp}/{folder}", exist_ok=True)
+        os.makedirs(f"{const.PREFIX}output/{timestamp}/{folder}", exist_ok=True)
 
 
 ##############################
@@ -83,7 +89,7 @@ def calculate_center_of_mass(image_info, save_output):
         if save_output:
             arrow_image = binary_mask.copy()
             arrow_image = cv2.arrowedLine(arrow_image, (start_x, start_y), (x, y), (150, 150, 150), 2)
-            cv2.imwrite(f"output/{timestamp}/{const.OUTPUT_FOLDERS[2]}/{image_info[1]}.jpg", arrow_image)
+            cv2.imwrite(f"{const.PREFIX}output/{timestamp}/{const.OUTPUT_FOLDERS[2]}/{image_info[1]}.jpg", arrow_image)
 
         return x, y
 
@@ -97,21 +103,6 @@ def calculate_center_of_mass(image_info, save_output):
 ##############################
 # Utilities
 ##############################
-
-
-# ArUco Mark Detection
-# def detect_aruco():
-#     image = cv2.imread(gs.frame(), cv2.IMREAD_COLOR)
-#     (corners, ids, _) = aruco_detector.detectMarkers(image)
-#
-#     if ids is not None:
-#         print("ArUco markers detected:")
-#         for i in range(len(ids)):
-#             print(f"Marker ID: {ids[i]}, Corner Coordinates: {corners[i]}")
-#         return True
-#     else:
-#         print("No ArUco markers detected.")
-#         return False
 
 
 # Create side by side video of camera-semseg-binary
