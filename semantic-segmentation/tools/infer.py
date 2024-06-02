@@ -133,10 +133,6 @@ class SemSeg:
             self._write_log(f"Image: {img_fname}")
             image = read_image(str(img_fname))
 
-            # Constantly empty image dir to capture new photos
-            if not self.lab_exp:
-                h.delete_images_in_folder(const.CAMERA_OUTPUT_PATH)
-
             image = T.Resize((int(image.shape[1] * 0.1), int(image.shape[2] * 0.1)))(image)
             if self.timestamp != -1:
                 if self.save_output:
@@ -171,7 +167,12 @@ class SemSeg:
 
             if image_file is not None:
                 self._predict(image_file)
-            time.sleep(0.5)
+
+            # Constantly empty camera dir to capture new photos
+            if not self.lab_exp:
+                h.delete_images_in_folder(const.CAMERA_OUTPUT_PATH)
+
+            time.sleep(const.TIME_PAUSE)
 
     def get_seg_result(self):
         with self.result_lock:
