@@ -15,6 +15,7 @@ from semseg.datasets import *
 from semseg.utils.utils import timer
 from semseg.utils.visualize import draw_text
 from robin_code import constants as const
+from robin_code import helper as h
 
 
 ##############################
@@ -128,19 +129,28 @@ class SemSeg:
 
     def _predict(self, img_fname) -> None:
         # Resize and save image
-        image = read_image(str(img_fname))
-        image = T.Resize((int(image.shape[1] * 0.1), int(image.shape[2] * 0.1)))(image)
-        if self.timestamp != -1:
-            if self.save_output:
-                TF.to_pil_image(image).save(self.save_dir / f"{self.timestamp}/camera/{str(img_fname.stem)}.jpg")
+        try:
+            self._write_log(f"Image: {img_fname}")
+            image = read_image(str(img_fname))
 
-            # if self.lab_exp:
-            #     os.remove(img_fname)
+            # Constantly empty image dir to capture new photos
+            if not self.lab_exp:
+                h.delete_images_in_folder(const.CAMERA_OUTPUT_PATH)
 
-            # Process
-            preprocess_image = self._preprocess(image)
-            seg_map = self._model_forward(preprocess_image)
-            self._postprocess(image, seg_map, img_fname)
+            image = T.Resize((int(image.shape[1] * 0.1), int(image.shape[2] * 0.1)))(image)
+            if self.timestamp != -1:
+                if self.save_output:
+                    TF.to_pil_image(image).save(self.save_dir / f"{self.timestamp}/camera/{str(img_fname.stem)}.jpg")
+
+                if self.lab_exp:
+                    os.remove(img_fname)
+
+                # Process
+                preprocess_image = self._preprocess(image)
+                seg_map = self._model_forward(preprocess_image)
+                self._postprocess(image, seg_map, img_fname)
+        except RuntimeError as _:
+            pass
 
     def predict_on_startup(self):
         # Run on startup to reduce initial overhead
@@ -157,11 +167,11 @@ class SemSeg:
                 image_file = min(files, key=lambda f: f.name, default=None)
             else:
                 files = self.test_files.glob('*.*')
-                image_file = max(files, key=lambda f: f.name, default=None)
+                image_file = max(files, key=lambda f: os.path.getctime(f), default=None)
 
             if image_file is not None:
                 self._predict(image_file)
-            time.sleep(2)  # TODO: Change as needed
+            time.sleep(0.5)
 
     def get_seg_result(self):
         with self.result_lock:
