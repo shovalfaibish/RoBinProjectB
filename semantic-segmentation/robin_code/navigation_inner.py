@@ -101,14 +101,16 @@ class Navigation:
         return result[0] if result else None
 
     def _wait_for_request_done(self, request_task_id):
+        iteration = 1  # To solve bug: request is DONE but status isn't updated
         while not self.__stop_thread:
             status = self._get_request_status(request_task_id)
             if status is None:  # Error
                 raise "Error in function '_wait_for_request_done': caught Status=None"
-            if status == "DONE":
+            if status == "DONE" or iteration == 4:
                 self.write_log(f"Request {request_task_id} DONE.")
                 break
             time.sleep(const.TIME_PAUSE)
+            iteration += 1
 
     def _terminate_all_requests(self):
         self.requests_cursor.execute("UPDATE navigationrequests "
