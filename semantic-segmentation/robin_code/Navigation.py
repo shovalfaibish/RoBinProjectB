@@ -34,14 +34,14 @@ def look_for_tasks():
         nav.write_log("Started look_for_tasks thread and connected to DB.")
 
         # DELETE EVENTUALLY
-        tasks_cursor.execute("delete from navigationrequests")
-        tasks_cursor.execute("delete from drivertasks")
-        tasks_cursor.execute("delete from navigationtasks")
-        tasks_cursor.execute("delete from communicationin")
-        dtime = datetime.now().strftime("%d%m%y_%H%M%S%f")
-        tasks_cursor.execute(f"insert into communicationin (TimeStamp, Type, Data, Status) values ('1', 'MANUAL', '2,{dtime},Navigation,Start,true', 'NEW')")
-        tasks_cursor.execute("update modulejobs set ModuleStatus=1 where Module='Communication'")
-        t_database.commit()
+        #tasks_cursor.execute("delete from navigationrequests")
+        #tasks_cursor.execute("delete from drivertasks")
+        #tasks_cursor.execute("delete from navigationtasks")
+        #tasks_cursor.execute("delete from communicationin")
+        #dtime = datetime.now().strftime("%d%m%y_%H%M%S%f")
+        #tasks_cursor.execute(f"insert into communicationin (TimeStamp, Type, Data, Status) values ('1', 'MANUAL', '2,{dtime},Navigation,Start,true', 'NEW')")
+        #tasks_cursor.execute("update modulejobs set ModuleStatus=1 where Module='Communication'")
+        #t_database.commit()
 
         while True:
             # ManagerStatus in ModuleJobs table notifies on new tasks
