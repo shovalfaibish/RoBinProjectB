@@ -9,9 +9,9 @@
   This project focuses on developing RoBin's autonomous navigation system for effective traversal within the Technion Kislak Park, a crucial  step towards its role as a park-cleaning robot. We have designed a comprehensive navigation program that orchestrates real-time tasks right from the initiation of RoBin's journey.
 </p>
 
-[Sample Clips](https://youtu.be/kCh92sKAQ3g)
+[Sample Clips](https://youtu.be/)
 
-## <div align="left">Shoval Faibish & Ilana Karimov, Technion, January 2024</div>
+## <div align="left">Shoval Faibish & Ilana Karimov, Technion, June 2024</div>
 
 
 
