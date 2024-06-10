@@ -172,7 +172,7 @@ class SemSeg:
             if not self.lab_exp:
                 h.delete_images_in_folder(const.CAMERA_OUTPUT_PATH)
 
-            time.sleep(0.5)
+            time.sleep(const.TIME_PAUSE)
 
     def get_seg_result(self):
         with self.result_lock:
