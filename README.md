@@ -11,7 +11,7 @@
 [Sample Clips](https://youtu.be/ASz9KSO4-FQ)
 
 <p align="center">
-<img width="200" src="https://github.com/shovalfaibish/RoBinProjectB/assets/93712053/34d4aaee-7fcc-4b07-bd82-0361a62c9700">
+<img width="200" src="https://github.com/shovalfaibish/RoBinProjectB/assets/93712053/9ffec737-ae3b-4e6d-89a6-f59e0533d6c7">
 </p>
 <div align="left">Shoval Faibish & Ilana Karimov, Technion, June 2024</div>
 
