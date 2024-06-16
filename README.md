@@ -13,7 +13,7 @@
 
 [Sample Clips](https://youtu.be/ASz9KSO4-FQ)
 
-<div align="left">Shoval Faibish & Ilana Karimov, Technion, June 2024</div>
+## <div align="left">Shoval Faibish & Ilana Karimov, Technion, June 2024</div>
 
 
 
