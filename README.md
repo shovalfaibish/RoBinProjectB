@@ -10,6 +10,9 @@
 
 [Sample Clips](https://youtu.be/ASz9KSO4-FQ)
 
+<p align="center">
+<img width="300" src="https://github.com/shovalfaibish/RoBinProjectB/assets/93712053/34d4aaee-7fcc-4b07-bd82-0361a62c9700">
+</p>
 ## <div align="left">Shoval Faibish & Ilana Karimov, Technion, June 2024</div>
 
 
