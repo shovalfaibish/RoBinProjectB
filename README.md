@@ -1,16 +1,14 @@
 # <div align="center">Autonomous Navigation in Park Using Semantic Segmentation</div>
 
 <p align="center">
-<img width="460" src="https://github.com/shovalfaibish/RoBinProjectB/assets/93712053/16eadb97-f5ab-46b8-a691-f8a1e419d4e6">
+<img width="460" src="https://github.com/user-attachments/assets/91c62665-e838-4796-a294-c5fc91cac325">
 </p>
 
-<p align="center">
+<p>
 This project focuses on developing RoBin's autonomous navigation system for effective traversal within Technion Kislak Park, a crucial step toward its role as a park-cleaning robot. We designed a comprehensive navigation program that manages real-time tasks from the initiation of RoBin's journey.
 </p>
 
-<p align="center">
-Awarded *Excellent Project* at the ECE Annual Contest (KASHER).
-</p>
+<p>Awarded <b>Excellent Project</b> at the ECE Annual Contest (KASHER).</p>
 
 <p align="center">
 <a href="https://youtu.be/ASz9KSO4-FQ">Sample Clips</a>
