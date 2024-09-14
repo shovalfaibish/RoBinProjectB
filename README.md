@@ -1,4 +1,4 @@
-# <div align="center">Autonomous Navigation in Park Using Semantic Segmentation</div>
+# <div align="center">Autonomous Navigation Using Semantic Segmentation</div>
 
 <p align="center">
 <img width="460" src="https://github.com/user-attachments/assets/91c62665-e838-4796-a294-c5fc91cac325">
